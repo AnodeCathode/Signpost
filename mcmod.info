@@ -1,0 +1,16 @@
+[
+{
+  "modid": "signpost",
+  "name": "Signpost",
+  "description": "signpost mod.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Gollorum"],
+  "credits": "Chinese localization by TartaricAcid; Russian localization by Aqelius",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
