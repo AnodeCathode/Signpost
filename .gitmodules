@@ -1,4 +1,4 @@
 [submodule "src/core"]
-	path = src/core
+	path = src/main/java/gollorum/signpost/core
 	url = https://github.com/Gollorum/Signpost.git
 	branch = core
