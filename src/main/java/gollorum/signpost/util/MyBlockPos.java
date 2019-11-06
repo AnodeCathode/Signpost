@@ -1,83 +1,70 @@
 package gollorum.signpost.util;
 
+import java.util.Objects;
+import java.util.function.Function;
+
 import gollorum.signpost.Signpost;
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.blocks.tiles.PostPostTile;
 import gollorum.signpost.management.ClientConfigStorage;
-import io.netty.buffer.ByteBuf;
+import gollorum.signpost.network.NetworkUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
+import net.minecraft.world.dimension.DimensionType;
 
 public class MyBlockPos{
 	
+	private static final String VERSION = "1";
+	
 	public int x, y, z;
-	public String world;
-	public int dim;
-	public String modID = Signpost.MODID;
+	public DimensionType dim;
 	
-	public MyBlockPos(World world, BlockPos pos, int dim){
-		this(world, pos.getX(), pos.getY(), pos.getZ(), dim);
-	}
-
-	public MyBlockPos(World world, BlockPos pos) {
-		this(world, pos.getX(), pos.getY(), pos.getZ());
-	}
-
 	public MyBlockPos(World world, int x, int y, int z) {
-		this((world == null || world.isRemote) ? "" : world.getWorldInfo().getWorldName(), x, y, z, dim(world));
+		this(x, y, z, dim(world));
 	}
 
-	public MyBlockPos(World world, int x, int y, int z, int dim){
-		this((world==null||world.isRemote)?"":world.getWorldInfo().getWorldName(), x, y, z, dim);
-	}
-	
-	public MyBlockPos(String world, double x, double y, double z, int dim){
-		this(world, (int)x, (int)y, (int)z, dim);
+	public MyBlockPos(double x, double y, double z, DimensionType dim){
+		this((int)x, (int)y, (int)z, dim);
 	}
 
-	public MyBlockPos(String world, BlockPos pos, int dim){
+	public MyBlockPos(BlockPos pos, DimensionType dim){
 		x = pos.getX();
 		y = pos.getY();
 		z = pos.getZ();
-		this.world = world;
 		this.dim = dim;
 	}
 	
-	public MyBlockPos(String world, int x, int y, int z, int dim){
+	public MyBlockPos(int x, int y, int z, DimensionType dim){
 		this.x = x;
 		this.y = y;
 		this.z = z;
-		this.world = world;
 		this.dim = dim;
 	}
 
-	public MyBlockPos(String world, int x, int y, int z, int dim, String modID){
-		this(world, x, y, z, dim);
-		this.modID = modID;
-	}
-
 	public MyBlockPos(MyBlockPos pos) {
-		this(pos.world, pos.x, pos.y, pos.z, pos.dim);
+		this(pos.x, pos.y, pos.z, pos.dim);
 	}
 	
 	public MyBlockPos(Entity entity){
-		this(entity.world, (int)Math.floor(entity.posX), (int)Math.floor(entity.posY), (int)Math.floor(entity.posZ), dim(entity.world));
+		this((int)Math.floor(entity.posX), (int)Math.floor(entity.posY), (int)Math.floor(entity.posZ), dim(entity.world));
 	}
 
-	public static int dim(World world){
-		if(world==null||world.provider==null){
-			return Integer.MIN_VALUE;
+	private static DimensionType dim(World world){
+		if(world==null){
+			return null;
 		}else
-			return world.provider.getDimension();
+			return world.getDimension().getType();
 	}
 
+	public World getWorld(){
+		return Signpost.getServerInstance().getWorld(dim);
+	}
+	
 	public static enum Connection{VALID, WORLD, DIST}
 	
 	public Connection canConnectTo(BaseInfo inf){
@@ -87,112 +74,59 @@ public class MyBlockPos{
 		if(ClientConfigStorage.INSTANCE.deactivateTeleportation()){
 			return Connection.VALID;
 		}
-		if(!checkInterdimensional(inf.pos)){
+		if(!checkInterdimensional(inf.teleportPosition)){
 			return Connection.WORLD;
 		}
-		if(ClientConfigStorage.INSTANCE.getMaxDist()>-1&&distance(inf.pos)>ClientConfigStorage.INSTANCE.getMaxDist()){
+		if(ClientConfigStorage.INSTANCE.getMaxDist()>-1&&distance(inf.teleportPosition)>ClientConfigStorage.INSTANCE.getMaxDist()){
 			return Connection.DIST;
 		}
 		return Connection.VALID;
 	}
 	
 	public boolean checkInterdimensional(MyBlockPos pos){
-		if(pos==null){
-			return true;
-		}
 		boolean config = ClientConfigStorage.INSTANCE.interdimensional();
-		return config || (sameWorld(pos) && sameDim(pos));
+		return config || sameDim(pos);
 	}
 
 	public NBTTagCompound writeToNBT(NBTTagCompound tC){
-		int[] arr = {x, y, z, dim};
+		int[] arr = {x, y, z, dim.getId()};
 		tC.setIntArray("Position", arr);
-		tC.setString("WorldName", world);
-		tC.setString("modID", modID); 
+		tC.setString("Version", VERSION);
 		return tC;
 	}
 	
 	public static MyBlockPos readFromNBT(NBTTagCompound tC){
 		int[] arr = tC.getIntArray("Position");
-		return new MyBlockPos(tC.getString("WorldName"), arr[0], arr[1], arr[2], arr[3], tC.getString("modID"));
+		return new MyBlockPos(arr[0], arr[1], arr[2], DimensionType.getById(arr[3]));
 	}
 
-	public void toBytes(ByteBuf buf) {
-		ByteBufUtils.writeUTF8String(buf, world);
-		buf.writeInt(x);
-		buf.writeInt(y);
-		buf.writeInt(z);
-		buf.writeInt(dim);
-		ByteBufUtils.writeUTF8String(buf, modID); 
+	public void encode(PacketBuffer buffer) {
+		buffer.writeString(VERSION);
+		buffer.writeInt(x);
+		buffer.writeInt(y);
+		buffer.writeInt(z);
+		buffer.writeInt(dim.getId());
 	}
 	
-	public static MyBlockPos fromBytes(ByteBuf buf) {
-		String world = ByteBufUtils.readUTF8String(buf);
-		int x = buf.readInt();
-		int y = buf.readInt();
-		int z = buf.readInt();
-		int dim = buf.readInt();
-		String modID = ByteBufUtils.readUTF8String(buf); 
-	    return new MyBlockPos(world, x, y, z, dim, modID); 
-	}
-
-	@Override
-	public boolean equals(Object obj){
-		if(!(obj instanceof MyBlockPos)){
-			return false;
-		}
-		MyBlockPos other = (MyBlockPos)obj;
-			if(other.x!=this.x){
-				return false;
-			}else if(other.y!=this.y){
-				return false;
-			}else if(other.z!=this.z){
-				return false;
-			}else if(!sameWorld(other)){
-				return false;
-			}else if(!sameDim(other)){
-				return false;
-			}else return true;
-	}
-	
-	public boolean sameWorld(MyBlockPos other){
-		return sameWorld(other.world);
-	}
-	
-	public boolean sameWorld(String world){
-		if(world.equals("")){
-			world = this.world;
-		}else if(this.world.equals("")){
-			this.world = world;
-		}else if(!this.world.equals(world)){
-			return false;
-		}
-		return true;
+	public static MyBlockPos decode(PacketBuffer buffer) {
+		String savedVersion = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+		int x = buffer.readInt();
+		int y = buffer.readInt();
+		int z = buffer.readInt();
+		DimensionType dim = DimensionType.getById(buffer.readInt());
+		if(!savedVersion.equals(VERSION)) buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+	    return new MyBlockPos(x, y, z, dim); 
 	}
 	
 	public boolean sameDim(MyBlockPos other){
-		if(other.dim==Integer.MIN_VALUE || this.dim == Integer.MIN_VALUE){
-			other.dim = this.dim = Math.max(other.dim, this.dim);
-		}else if(other.dim!=this.dim){
-				return false;
-		}
-		return true;
+		return this.dim == other.dim;
 	}
 
 	public MyBlockPos update(MyBlockPos newPos){
 		x = newPos.x;
 		y = newPos.y;
 		z = newPos.z;
-		if(!(newPos.dim==Integer.MIN_VALUE)){
-			dim = newPos.dim;
-		}else{
-			newPos.dim = dim;
-		}
-		if(!newPos.world.equals("")){
-			world = newPos.world;
-		}else{
-			newPos.world = world;
-		}
+		dim = newPos.dim;
 		return this;
 	}
 	
@@ -200,45 +134,11 @@ public class MyBlockPos{
 		int dx = this.x-other.x;
 		int dy = this.y-other.y;
 		int dz = this.z-other.z;
-		return Math.sqrt(dx*dx+dy*dy+dz*dz);
+		return Math.sqrt(dx*dx + dy*dy + dz*dz);
 	}
 
 	public BlockPos toBlockPos(){
 		return new BlockPos(x, y, z);
-	}
-	
-	public double getLength(){
-		return Math.sqrt(x*x+y*y+z*z);
-	}
-	
-	public static double toLength(Vec3i vec){
-		return Math.sqrt(vec.getX()*vec.getX()+vec.getY()*vec.getY()+vec.getZ()*vec.getZ());
-	}
-	
-	public static Vec3i normalize(Vec3i vec){
-		double length = toLength(vec);
-		return new Vec3i(vec.getX()/length, vec.getY()/length, vec.getZ()/length);
-	}
-
-	public static double normalizedY(Vec3i vec){
-		return vec.getY()/toLength(vec);
-	}
-
-	public static double toLength(double x, double y, double z){
-		return Math.sqrt(x*x+y*y+z*z);
-	}
-	
-	public static double normalizedY(double x, double y, double z){
-		return y/toLength(x, y, z);
-	}
-	
-	@Override
-	public String toString(){
-		return world+": "+x+"|"+y+"|"+z+" in "+dim;
-	}
-	
-	public World getWorld(){
-		return Signpost.proxy.getWorld(this.world, this.dim);
 	}
 	
 	public TileEntity getTile(){
@@ -254,21 +154,41 @@ public class MyBlockPos{
 		}else{
 			return null;
 		}
-	} 
-    
-	public MyBlockPos fromNewPos(int x, int y, int z) {
-		return new MyBlockPos(world, x, y, z, dim, modID);
 	}
 
+	public MyBlockPos withX(int x) {
+		return new MyBlockPos(x, y, z, dim);
+	}
+	
+	public MyBlockPos withX(Function<Integer, Integer> xMap) {
+		return this.withX(xMap.apply(x));
+	}
+
+	public MyBlockPos withY(int y) {
+		return new MyBlockPos(x, y, z, dim);
+	}
+	
+	public MyBlockPos withY(Function<Integer, Integer> yMap) {
+		return this.withY(yMap.apply(y));
+	}
+
+	public MyBlockPos withZ(int z) {
+		return new MyBlockPos(x, y, z, dim);
+	}
+	
+	public MyBlockPos withZ(Function<Integer, Integer> zMap) {
+		return this.withZ(zMap.apply(z));
+	}
+    
 	public MyBlockPos getBelow() {
-		return fromNewPos(x, y - 1, z);
+		return this.withY(y -> y - 1);
 	}
 
 	public MyBlockPos front(EnumFacing facing, int i) {
-		int newX = x + facing.getXOffset() * i;
-		int newY = y + facing.getYOffset() * i;
-		int newZ = z + facing.getZOffset() * i;
-		return fromNewPos(newX, newY, newZ);
+		return this
+				.withX(x -> x + facing.getXOffset() * i)
+				.withY(y -> y + facing.getYOffset() * i)
+				.withZ(z -> z + facing.getZOffset() * i);
 	}
 
 	public BiomeContainer getBiome() {
@@ -278,5 +198,27 @@ public class MyBlockPos{
 		} else {
 			return null;
 		}
+	}
+
+	@Override
+	public String toString(){
+		return x+"|"+y+"|"+z+" in "+dim;
+	}
+
+	@Override
+	public boolean equals(Object obj){
+		if(!(obj instanceof MyBlockPos)){
+			return false;
+		}
+		MyBlockPos other = (MyBlockPos) obj;
+		return other.x == this.x
+			&& other.y == this.y
+			&& other.z == this.z
+			&& sameDim(other);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(x, y, z, dim.getId());
 	}
 }

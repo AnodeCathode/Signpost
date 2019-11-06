@@ -1,6 +1,7 @@
 package gollorum.signpost.network.handlers;
 
 import java.util.Map.Entry;
+import java.util.function.Supplier;
 
 import gollorum.signpost.blocks.tiles.PostPostTile;
 import gollorum.signpost.management.PostHandler;
@@ -9,14 +10,12 @@ import gollorum.signpost.network.messages.SendAllPostBasesMessage.DoubleStringIn
 import gollorum.signpost.util.DoubleBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
+import net.minecraftforge.fml.network.NetworkEvent.Context;
 
-public class SendAllPostBasesHandler implements IMessageHandler<SendAllPostBasesMessage, IMessage> {
+public class SendAllPostBasesHandler extends Handler<SendAllPostBasesHandler, SendAllPostBasesMessage> {
 
 	@Override
-	public IMessage onMessage(SendAllPostBasesMessage message, MessageContext ctx) {
+	public void handle(SendAllPostBasesMessage message, Supplier<Context> contextSupplier) {
 		PostHandler.setPosts(message.toPostMap());
 		for(Entry<MyBlockPos, DoubleStringInt> now: message.posts.entrySet()){
 			TileEntity tileEntity = now.getKey().getTile();
@@ -43,6 +42,5 @@ public class SendAllPostBasesHandler implements IMessageHandler<SendAllPostBases
 				}
 			}
 		}
-		return null;
 	}
 }

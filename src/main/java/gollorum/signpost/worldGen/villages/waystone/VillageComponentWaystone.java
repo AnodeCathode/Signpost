@@ -20,22 +20,24 @@ import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.MutableBoundingBox;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
-import net.minecraft.world.gen.structure.StructureComponent;
-import net.minecraft.world.gen.structure.StructureVillagePieces;
+import net.minecraft.world.gen.feature.structure.StructurePiece;
+import net.minecraft.world.gen.feature.structure.VillagePieces;
 
-public class VillageComponentWaystone extends StructureVillagePieces.Village{
+public class VillageComponentWaystone extends VillagePieces.Village{
 	
 	private boolean built = false;
-	private StructureVillagePieces.Start start;
+	private VillagePieces.Start start;
 	private EnumFacing facing;
 	
 	public VillageComponentWaystone(){
 		super();
 	}
 	
-	public VillageComponentWaystone(StructureVillagePieces.Start start, int type, StructureBoundingBox boundingBox, EnumFacing facing){
+	public VillageComponentWaystone(VillagePieces.Start start, int type, MutableBoundingBox boundingBox, EnumFacing facing){
 		super(start, type);
 		this.boundingBox = boundingBox;
 		this.start = start;
@@ -43,8 +45,8 @@ public class VillageComponentWaystone extends StructureVillagePieces.Village{
 	}
 	
 	@Nullable
-	public static StructureVillagePieces.Village buildComponent(StructureVillagePieces.Start startPiece, List<StructureComponent> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
-		StructureBoundingBox boundingBox = StructureBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 1, 1, 1, facing);
+	public static VillagePieces.Village buildComponent(VillagePieces.Start startPiece, List<StructurePiece> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
+		MutableBoundingBox boundingBox = MutableBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 1, 1, 1, facing);
 		if (canVillageGoDeeper(boundingBox) && findIntersecting(pieces, boundingBox) == null) {
 			return new VillageComponentWaystone(startPiece, type, boundingBox, facing.getOpposite());
 		}
@@ -52,7 +54,7 @@ public class VillageComponentWaystone extends StructureVillagePieces.Village{
 	}
 
 	@Override
-	public boolean addComponentParts(final World world, Random random, StructureBoundingBox boundingBox) {
+	public boolean addComponentParts(IWorld iworld, Random random, MutableBoundingBox boundingBox, ChunkPos chunkPos) {
 		if(built || start==null ||! NameLibrary.getInstance().namesLeft()){
 			return true;
 		}else{
@@ -62,15 +64,16 @@ public class VillageComponentWaystone extends StructureVillagePieces.Village{
 		if(name==null){
 			return true;
 		}
+		World world = iworld.getWorld();
 		int x = (this.boundingBox.minX + this.boundingBox.maxX)/2;
 		int z = (this.boundingBox.minZ + this.boundingBox.maxZ)/2;
 		BlockPos postPos = GenerateStructureHelper.getInstance().getTopSolidOrLiquidBlock(world, new BlockPos(x, 0, z));
 		if (world.getBlockState(postPos.add(0, -1, 0)).getMaterial().isLiquid()) {
-			IBlockState block = this.getBiomeSpecificBlockState(Blocks.PLANKS.getDefaultState());
+			IBlockState block = this.getBiomeSpecificBlockState(Blocks.OAK_PLANKS.getDefaultState());
 			world.setBlockState(postPos.add(0, -1, 0), block);
 		}
 		final BlockPos finalPos = postPos;
-		if(world.setBlockState(finalPos, BlockHandler.basemodels[random.nextInt(2)].getStateForFacing(facing), 3)){
+		if(world.setBlockState(finalPos, BlockHandler.basemodels[random.nextInt(2)].getStateForFacing(facing))){
 			SPEventHandler.scheduleTask(new BoolRun() {
 				@Override
 				public boolean run() {
@@ -95,7 +98,7 @@ public class VillageComponentWaystone extends StructureVillagePieces.Village{
 		
 		assureBaseInfo(container, world, new MyBlockPos(world, postPos), facing, name);
 		
-		StructureBoundingBox villageBox = start.getBoundingBox();
+		MutableBoundingBox villageBox = start.getBoundingBox();
 		MyBlockPos villagePos = new MyBlockPos(world, villageBox.minX, 0, villageBox.minZ);
 		MyBlockPos blockPos = new MyBlockPos(world, postPos);
 		VillageLibrary.getInstance().putWaystone(villagePos, blockPos);

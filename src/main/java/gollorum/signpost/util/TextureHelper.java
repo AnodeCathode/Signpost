@@ -6,8 +6,9 @@ import gollorum.signpost.blocks.SuperPostPost;
 import gollorum.signpost.blocks.tiles.SuperPostPostTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.model.BakedQuad;
+import net.minecraft.client.renderer.model.IBakedModel;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -17,7 +18,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.client.FMLClientHandler;
 
 public class TextureHelper {
 
@@ -42,20 +42,17 @@ public class TextureHelper {
 			}else{
 				IBlockState blockState = blockStateFromPlayer(player, worldIn, pos, hand, facing, hitX, hitY, hitZ);
 				
-				IBakedModel model = FMLClientHandler.instance().getClient().getRenderItem().getItemModelMesher().getItemModel(stack);
+				IBakedModel model = Minecraft.getInstance().getRenderItem().getItemModelMesher().getItemModel(stack);
 		
 				Vec3d look = player.getLookVec();
 				EnumFacing side = EnumFacing.getFacingFromVector((float)-look.x, (float)-look.y, (float)-look.z);
 				
 				BakedQuad quad = model.getQuads(blockState, side, 0).get(0);
 				
-				String textureName = quad.getSprite().getIconName();
-				String resourceName = textureNameToResourceName(textureName);
-
-				ret = new ResourceLocation(resourceName);
+				ret = quad.getSprite().getName();
 			}
 			
-			FMLClientHandler.instance().getClient().getResourceManager().getResource(ret);
+			Minecraft.getInstance().getResourceManager().getResource(ret);
 			return ret;
 		}catch(Exception e){return null;}
 	}
@@ -69,30 +66,10 @@ public class TextureHelper {
 			return null;
 		}
 	}
-	
-	private String textureNameToResourceName(String textureName){
-		if(textureName.equals("missingno") || !textureName.contains(":")){
-			return null;
-		}
-		String[] split = textureName.split(":");
-		if(split.length!=2){
-			return null;
-		}
-		if(!split[1].startsWith("textures/blocks/")){
-			if(!split[1].startsWith("blocks/")){
-				split[1] = "blocks/"+split[1];
-			}
-			split[1] = "textures/"+split[1];
-		}
-		if(!endsWithIgnoreCase(split[1], ".png")){
-			split[1] += ".png";
-		}
-		return split[0]+":"+split[1];
-	}
 
 	public boolean setTexture(BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
-		EntityPlayer player = FMLClientHandler.instance().getClient().player;
-		World world = FMLClientHandler.instance().getClient().world;
+		EntityPlayer player = Minecraft.getInstance().player;
+		World world = Minecraft.getInstance().world;
 		ResourceLocation texture = getHeldBlockTexture(player, world, pos, hand, facing, hitX, hitY, hitZ);
 		TileEntity tileEntity = world.getTileEntity(pos);
 		if(texture==null ||! (tileEntity instanceof SuperPostPostTile)){

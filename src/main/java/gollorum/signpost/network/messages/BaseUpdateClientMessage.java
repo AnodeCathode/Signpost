@@ -3,10 +3,9 @@ package gollorum.signpost.network.messages;
 import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.StonedHashSet;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraft.network.PacketBuffer;
 
-public class BaseUpdateClientMessage implements IMessage {
+public class BaseUpdateClientMessage extends Message<BaseUpdateClientMessage> {
 
 	public StonedHashSet waystones = new StonedHashSet();
 	
@@ -15,19 +14,19 @@ public class BaseUpdateClientMessage implements IMessage {
 	}
 	
 	@Override
-	public void toBytes(ByteBuf buf) {
-		buf.writeInt(waystones.size());
+	public void encode(PacketBuffer buffer) {
+		buffer.writeInt(waystones.size());
 		for(BaseInfo now: waystones){
-			now.toBytes(buf);
+			now.encode(buffer);
 		}
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
+	public void decode(PacketBuffer buffer) {
 		waystones = new StonedHashSet();
-		int c = buf.readInt();
+		int c = buffer.readInt();
 		for(int i = 0; i<c; i++){
-			waystones.add(BaseInfo.fromBytes(buf));
+			waystones.add(BaseInfo.decode(buffer));
 		}
 	}
 

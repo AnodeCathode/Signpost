@@ -1,10 +1,9 @@
 package gollorum.signpost.network.messages;
 
 import gollorum.signpost.util.BaseInfo;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraft.network.PacketBuffer;
 
-public class TeleportMeMessage implements IMessage{
+public class TeleportMeMessage extends Message<TeleportMeMessage> {
 
 	public BaseInfo base;
 	
@@ -15,13 +14,13 @@ public class TeleportMeMessage implements IMessage{
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		base = BaseInfo.fromBytes(buf);
+	public void decode(PacketBuffer buf) {
+		base = BaseInfo.decode(buf);
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
-		base.toBytes(buf);
+	public void encode(PacketBuffer buf) {
+		base.encode(buf);
 	}
 	
 }

@@ -1,33 +1,35 @@
 package gollorum.signpost.util;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import gollorum.signpost.Signpost;
+import gollorum.signpost.network.NetworkUtil;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.network.ByteBufUtils;
 
 public class BaseInfo {
 
 	private static final String VERSION = "Version2:";
 	private String name;
-	public MyBlockPos blockPos;
+	public MyBlockPos blockPosition;
 	/**
 	 * One block below the teleport destination
 	 */
-	public MyBlockPos pos;
-	/** unused */
+	public MyBlockPos teleportPosition;
 	public UUID owner;
 
 	public BaseInfo(String name, MyBlockPos pos, UUID owner){
 		this.name = ""+name;
-		this.blockPos = pos;
+		this.blockPosition = pos;
 		if(pos==null){
-			this.pos = null;
+			this.teleportPosition = null;
 		}else{
-			this.pos = new MyBlockPos(pos);
+			this.teleportPosition = new MyBlockPos(pos);
 		}
 		this.owner = owner;
 	}
@@ -35,8 +37,8 @@ public class BaseInfo {
 	public BaseInfo(String name, MyBlockPos blockPos, MyBlockPos telePos, UUID owner){
 		telePos.y--;
 		this.name = ""+name;
-		this.blockPos = blockPos;
-		this.pos = telePos;
+		this.blockPosition = blockPos;
+		this.teleportPosition = telePos;
 		this.owner = owner;
 	}
 
@@ -48,41 +50,40 @@ public class BaseInfo {
 	public void writeToNBT(NBTTagCompound tC){
 		tC.setString("name", ""+name);	//Warum bin ich nur so unglaublich gehörnamputiert? *kotz*
 		NBTTagCompound posComp = new NBTTagCompound();
-		pos.writeToNBT(posComp);
+		teleportPosition.writeToNBT(posComp);
 		tC.setTag("pos", posComp);
 		NBTTagCompound blockPosComp = new NBTTagCompound();
-		pos.writeToNBT(blockPosComp);
-		blockPos.writeToNBT(blockPosComp);
+		teleportPosition.writeToNBT(blockPosComp);
+		blockPosition.writeToNBT(blockPosComp);
 		tC.setTag("blockPos", blockPosComp);
-		pos.writeToNBT(tC);
+		teleportPosition.writeToNBT(tC);
 		tC.setString("UUID", ""+owner);
 	}
 
 	public static BaseInfo readFromNBT(NBTTagCompound tC) {
 		String name = tC.getString("name");
+		UUID owner = uuidFromString(tC.getString("UUID"));
 		if(tC.hasKey("blockPos")){
-			MyBlockPos pos = MyBlockPos.readFromNBT(tC.getCompoundTag("pos"));
-			MyBlockPos blockPos = MyBlockPos.readFromNBT(tC.getCompoundTag("blockPos"));
-			UUID owner = uuidFromString(tC.getString("UUID"));
+			MyBlockPos pos = MyBlockPos.readFromNBT(tC.getCompound("pos"));
+			MyBlockPos blockPos = MyBlockPos.readFromNBT(tC.getCompound("blockPos"));
 			return loadBaseInfo(name, blockPos, pos, owner);
 		}else{
 			MyBlockPos pos = MyBlockPos.readFromNBT(tC);
-			UUID owner = uuidFromString(tC.getString("UUID"));
 			return new BaseInfo(name, pos, owner);
 		}
 	}
-
-	public void toBytes(ByteBuf buf) {
-		ByteBufUtils.writeUTF8String(buf, ""+name);
-		pos.toBytes(buf);
-		ByteBufUtils.writeUTF8String(buf, VERSION+owner);
-		blockPos.toBytes(buf);
-	}
 	
-	public static BaseInfo fromBytes(ByteBuf buf) {
-		String name = ByteBufUtils.readUTF8String(buf);
-		MyBlockPos pos = MyBlockPos.fromBytes(buf);
-		String o = ByteBufUtils.readUTF8String(buf);
+	public void encode(PacketBuffer buffer) {
+		buffer.writeString(""+name);
+		teleportPosition.encode(buffer);
+		buffer.writeString(VERSION+owner);
+		blockPosition.encode(buffer);
+	}
+
+	public static BaseInfo decode(PacketBuffer buffer) {
+		String name = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+		MyBlockPos pos = MyBlockPos.decode(buffer);
+		String o = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
 		if(o.startsWith(VERSION)){
 			o = o.replaceFirst(VERSION, "");
 			UUID owner;
@@ -91,7 +92,7 @@ public class BaseInfo {
 			}catch(Exception e){
 				owner = null;
 			}
-			MyBlockPos blockPos = MyBlockPos.fromBytes(buf);
+			MyBlockPos blockPos = MyBlockPos.decode(buffer);
 			return loadBaseInfo(name, blockPos, pos, owner);//Ich bin sehr dumm.
 		}else{
 			UUID owner = uuidFromString(o);
@@ -99,19 +100,10 @@ public class BaseInfo {
 		}
 	}
 
-	@Override
-	public boolean equals(Object other){
-		if(!(other instanceof BaseInfo)){
-			return super.equals(other);
-		}else{
-			return ((BaseInfo)other).blockPos.equals(this.blockPos);//Wirklich sehr dumm.
-		}
-	}
-	
 	public void setAll(BaseInfo newWS){
 		this.name = ""+newWS.name;
-		this.pos.update(newWS.pos);
-		this.blockPos.update(newWS.blockPos);
+		this.teleportPosition.update(newWS.teleportPosition);
+		this.blockPosition.update(newWS.blockPosition);
 		this.owner = newWS.owner;
 	}
 	
@@ -124,11 +116,6 @@ public class BaseInfo {
 		}
 	}
 
-	@Override
-	public String toString(){
-		return ""+name;
-	}
-	
 	public boolean hasName(){
 		return !(name==null || name.equals("null") || name.equals(""));
 	}
@@ -140,35 +127,6 @@ public class BaseInfo {
 	public void setName(String name){
 		this.name = name;
 	}
-
-	public boolean isNative() {
-		return blockPos.modID.equals(Signpost.MODID);
-	}
-
-	public static BaseInfo fromExternal(String name, int x, int y, int z, int dimension, String modId){
-		World world = FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(dimension);
-		String worldString;
-		try{
-			worldString = world.getWorldInfo().getWorldName();
-		}catch(Exception e){
-			worldString = "";
-		}
-		MyBlockPos pos = new MyBlockPos(worldString, x, y, z, dimension, modId);
-		return new BaseInfo(name, pos, null);
-	}
-	
-	public static BaseInfo fromExternal(String name, int blockX, int blockY, int blockZ, int teleX, int teleY, int teleZ, int dimension, String modId){
-		String worldString;
-		try{
-			World world = FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(dimension);
-			worldString = world.getWorldInfo().getWorldName();
-		}catch(Exception e){
-			worldString = "";
-		}
-		MyBlockPos blockPos = new MyBlockPos(worldString, blockX, blockY, blockZ, dimension, modId);
-		MyBlockPos telePos = new MyBlockPos(worldString, teleX, teleY, teleZ, dimension, modId);
-		return new BaseInfo(name, blockPos, telePos, null);
-	}
 	
 	private static UUID uuidFromString(String string){
 		try{
@@ -176,5 +134,25 @@ public class BaseInfo {
 		}catch(IllegalArgumentException e){
 			return null;
 		}
+	}
+
+	@Override
+	public boolean equals(Object other){
+		if(!(other instanceof BaseInfo)){
+			return super.equals(other);
+		}else{
+			return ((BaseInfo)other).blockPosition.equals(this.blockPosition);//Wirklich sehr dumm.
+		}
+	}
+	
+	@Override
+	public String toString(){
+		return ""+name;
+	}
+	
+	//TODO Check for a better solution
+	@Override
+	public int hashCode() {
+		return blockPosition.hashCode();
 	}
 }

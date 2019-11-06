@@ -25,6 +25,7 @@ import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -73,7 +74,7 @@ public class BasePost extends BlockContainer {
 		return new BasePostTile().setup();
 	}
 
-	public static BasePostTile getWaystoneRootTile(World world, BlockPos pos) {
+	public static BasePostTile getWaystoneRootTile(IWorld world, BlockPos pos) {
 		TileEntity ret = world.getTileEntity(pos);
 		if (ret instanceof BasePostTile) {
 			return (BasePostTile) ret;
@@ -91,7 +92,7 @@ public class BasePost extends BlockContainer {
 		return ret;
 	}
 
-	public static void placeServer(World world, MyBlockPos pos, EntityPlayerMP player) {
+	public static void placeServer(IWorld world, MyBlockPos pos, EntityPlayerMP player) {
 		BasePostTile tile = getWaystoneRootTile(world, pos.toBlockPos());
 		String name = generateName();
 		UUID owner = player.getUniqueID();
@@ -114,15 +115,12 @@ public class BasePost extends BlockContainer {
 		NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, pos.x, pos.y, pos.z), player);
 	}
 
-	public static void placeClient(final World world, final MyBlockPos pos, final EntityPlayer player) {
+	public static void placeClient(final IWorld world, final MyBlockPos pos, final EntityPlayer player) {
 		BasePostTile tile = getWaystoneRootTile(world, pos.toBlockPos());
 		if (tile != null && tile.getBaseInfo() == null) {
 			BaseInfo ws = PostHandler.getAllWaystones().getByPos(pos);
 			if (ws == null) {
-				UUID owner = player.getUniqueID();
-				if(owner==null){
-					System.out.println("bp pc null");
-				}
+				UUID owner = player != null ? player.getUniqueID() : null;
 				PostHandler.getAllWaystones().add(new BaseInfo("", pos, owner));
 			}
 		}

@@ -4,8 +4,8 @@ import org.lwjgl.opengl.GL11;
 
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.util.BigBaseInfo;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.entity.model.ModelBase;
+import net.minecraft.client.renderer.entity.model.ModelRenderer;
 import net.minecraft.util.ResourceLocation;
 
 public class ModelBigPost extends ModelBase {

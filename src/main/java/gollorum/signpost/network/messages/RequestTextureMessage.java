@@ -1,12 +1,11 @@
 package gollorum.signpost.network.messages;
 
-import io.netty.buffer.ByteBuf;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class RequestTextureMessage implements IMessage {
+public class RequestTextureMessage extends Message<RequestTextureMessage> {
 
 	private int x,y,z;
 	public EnumHand hand;
@@ -27,27 +26,27 @@ public class RequestTextureMessage implements IMessage {
 	}
 	
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		x = buf.readInt();
-		y = buf.readInt();
-		z = buf.readInt();
-		hand = buf.readBoolean() ? EnumHand.MAIN_HAND : EnumHand.OFF_HAND;
-		facing = EnumFacing.VALUES[buf.readByte()];
-		hitX = buf.readFloat();
-		hitY = buf.readFloat();
-		hitZ = buf.readFloat();
+	public void decode(PacketBuffer buffer) {
+		x = buffer.readInt();
+		y = buffer.readInt();
+		z = buffer.readInt();
+		hand = buffer.readBoolean() ? EnumHand.MAIN_HAND : EnumHand.OFF_HAND;
+		facing = EnumFacing.values()[buffer.readByte()];
+		hitX = buffer.readFloat();
+		hitY = buffer.readFloat();
+		hitZ = buffer.readFloat();
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
-		buf.writeInt(x);
-		buf.writeInt(y);
-		buf.writeInt(z);
-		buf.writeBoolean(hand == EnumHand.MAIN_HAND);
-		buf.writeByte(facing.getIndex());
-		buf.writeFloat(hitX);
-		buf.writeFloat(hitY);
-		buf.writeFloat(hitZ);
+	public void encode(PacketBuffer buffer) {
+		buffer.writeInt(x);
+		buffer.writeInt(y);
+		buffer.writeInt(z);
+		buffer.writeBoolean(hand == EnumHand.MAIN_HAND);
+		buffer.writeByte(facing.getIndex());
+		buffer.writeFloat(hitX);
+		buffer.writeFloat(hitY);
+		buffer.writeFloat(hitZ);
 	}
 
 	public BlockPos toBlockPos() {

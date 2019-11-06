@@ -1,6 +1,9 @@
 package gollorum.signpost;
 
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import gollorum.signpost.blocks.BaseModelPost;
@@ -15,42 +18,42 @@ import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.management.PlayerProvider;
 import gollorum.signpost.management.PlayerStore;
 import gollorum.signpost.management.PostHandler;
+import gollorum.signpost.management.PostHandler.PlayerRestrictions;
 import gollorum.signpost.management.WorldSigns;
 import gollorum.signpost.network.NetworkHandler;
 import gollorum.signpost.network.messages.InitPlayerResponseMessage;
 import gollorum.signpost.network.messages.SendAllBigPostBasesMessage;
 import gollorum.signpost.network.messages.SendAllPostBasesMessage;
 import gollorum.signpost.util.BoolRun;
+import gollorum.signpost.util.CollectionUtil;
 import gollorum.signpost.util.MyBlockPos;
-import gollorum.signpost.util.MyBlockPosSet;
-import gollorum.signpost.util.collections.Lurchpaerchensauna;
-import gollorum.signpost.util.collections.Lurchsauna;
-import gollorum.signpost.util.collections.Pair;
+import gollorum.signpost.util.Utils;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.item.Item;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.world.dimension.DimensionType;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.world.BlockEvent.BreakEvent;
-import net.minecraftforge.event.world.BlockEvent.PlaceEvent;
+import net.minecraftforge.event.world.BlockEvent.EntityPlaceEvent;
 import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.common.thread.EffectiveSide;
 
 public class SPEventHandler {
 
-	private static Lurchpaerchensauna<Runnable, Integer> serverTasks = new Lurchpaerchensauna<Runnable, Integer>();
-	private static Lurchsauna<BoolRun> serverPredicatedTasks = new Lurchsauna<BoolRun>();
+	private static Map<Runnable, Integer> serverTasks = new HashMap<Runnable, Integer>();
+	private static Collection<BoolRun> serverPredicatedTasks = new ArrayList<BoolRun>();
 	
-	private static Lurchpaerchensauna<Runnable, Integer> clientTasks = new Lurchpaerchensauna<Runnable, Integer>();
-	private static Lurchsauna<BoolRun> clientPredicatedTasks = new Lurchsauna<BoolRun>();
+	private static Map<Runnable, Integer> clientTasks = new HashMap<Runnable, Integer>();
+	private static Collection<BoolRun> clientPredicatedTasks = new ArrayList<BoolRun>();
 
 	public static final SPEventHandler INSTANCE = new SPEventHandler();
 	private SPEventHandler(){}
@@ -64,27 +67,35 @@ public class SPEventHandler {
 	 *            The delay in ticks (1s/20)
 	 */
 	public static void scheduleTask(Runnable task, int delay) {
-		if(FMLCommonHandler.instance().getEffectiveSide().equals(Side.SERVER)){
+		switch(EffectiveSide.get()){
+		case SERVER:
 			serverTasks.put(task, delay);
-		}else{
+			return;
+		case CLIENT:
 			clientTasks.put(task, delay);
+			return;
 		}
 	}
 
 	public static void scheduleTask(BoolRun task){
-		if(FMLCommonHandler.instance().getEffectiveSide().equals(Side.SERVER)){
+		switch(EffectiveSide.get()){
+		case SERVER:
 			serverPredicatedTasks.add(task);
-		}else{
+			return;
+		case CLIENT:
 			clientPredicatedTasks.add(task);
+			return;
 		}
 	}
 
 	public static boolean cancelTask(BoolRun task){
-		if(FMLCommonHandler.instance().getEffectiveSide().equals(Side.SERVER)){
+		switch(EffectiveSide.get()){
+		case SERVER:
 			return serverPredicatedTasks.remove(task);
-		}else{
+		case CLIENT:
 			return clientPredicatedTasks.remove(task);
 		}
+		throw new RuntimeException("Unhandled side: " + EffectiveSide.get());
 	}
 
 	@SubscribeEvent
@@ -92,26 +103,14 @@ public class SPEventHandler {
 		if (!(event instanceof TickEvent.ServerTickEvent)) {
 			return;
 		}
-		Lurchpaerchensauna<Runnable, Integer> serverTasksTEMP = serverTasks;
-		Lurchsauna<BoolRun> serverPredicatedTasksTEMP = serverPredicatedTasks;
-		serverTasks = new Lurchpaerchensauna<Runnable, Integer>();
-		serverPredicatedTasks = new Lurchsauna<BoolRun>();
 		
-		// time++;
-		for (Entry<Runnable, Integer> now : serverTasksTEMP.entrySet()) {
-			int val = now.getValue()-1;
-			if (val < 2) {
-				now.getKey().run();
-			}else{
-				serverTasks.put(now.getKey(), val);
-			}
-		}
-
-		for(BoolRun now: serverPredicatedTasksTEMP){
-			if(!now.run()){
-				serverPredicatedTasks.add(now);
-			}
-		}
+		serverTasks = CollectionUtil.mutateOr(
+			serverTasks, 
+			(task, delay) -> delay > 1, // condition
+			(task, delay) -> delay - 1, // mutation
+			(task, delay) -> task.run() // elseAction
+		);
+		serverPredicatedTasks = CollectionUtil.where(serverPredicatedTasks, task -> task.run());
 	}
 
 	@SubscribeEvent
@@ -119,37 +118,26 @@ public class SPEventHandler {
 		if (!(event instanceof TickEvent.ClientTickEvent)) {
 			return;
 		}
-		Lurchpaerchensauna<Runnable, Integer> clientTasksTEMP = clientTasks;
-		Lurchsauna<BoolRun> clientPredicatedTasksTEMP = clientPredicatedTasks;
-		clientTasks = new Lurchpaerchensauna<Runnable, Integer>();
-		clientPredicatedTasks = new Lurchsauna<BoolRun>();
-		
-		// time++;
-		for (Entry<Runnable, Integer> now : clientTasksTEMP.entrySet()) {
-			int val = now.getValue()-1;
-			if (val < 2) {
-				now.getKey().run();
-			}else{
-				clientTasks.put(now.getKey(), val);
-			}
-		}
 
-		for(BoolRun now: clientPredicatedTasksTEMP){
-			if(!now.run()){
-				clientPredicatedTasks.add(now);
-			}
-		}
+		clientTasks = CollectionUtil.mutateOr(
+				clientTasks, 
+			(task, delay) -> delay > 1, // condition
+			(task, delay) -> delay - 1, // mutation
+			(task, delay) -> task.run() // elseAction
+		);
+		clientPredicatedTasks = CollectionUtil.where(clientPredicatedTasks, task -> task.run());
 	}
 	
 	// ServerSide
 	@SubscribeEvent
 	public void loggedIn(PlayerLoggedInEvent event) {
-		if (event.player instanceof EntityPlayerMP) {
-			NetworkHandler.netWrap.sendTo(new InitPlayerResponseMessage(), (EntityPlayerMP) event.player);
-			NetworkHandler.netWrap.sendTo(new SendAllPostBasesMessage(), (EntityPlayerMP) event.player);
-			NetworkHandler.netWrap.sendTo(new SendAllBigPostBasesMessage(), (EntityPlayerMP) event.player);
-			PlayerStore store = event.player.getCapability(PlayerProvider.STORE_CAP, null);
-			store.init((EntityPlayerMP) event.player);
+		if (event.getPlayer() instanceof EntityPlayerMP) {
+			EntityPlayerMP player =  (EntityPlayerMP) event.getPlayer();
+			NetworkHandler.sendTo(player, new InitPlayerResponseMessage());
+			NetworkHandler.sendTo(player, new SendAllPostBasesMessage());
+			NetworkHandler.sendTo(player, new SendAllBigPostBasesMessage());
+			LazyOptional<PlayerStore> optionalStore = player.getCapability(PlayerProvider.STORE_CAP, null);
+			optionalStore.ifPresent(store -> store.init(player));
 		}
 	}
 
@@ -165,70 +153,70 @@ public class SPEventHandler {
 	
 	@SubscribeEvent
 	public void onLoad(WorldEvent.Load event) {
-		if(!event.getWorld().isRemote) {
+		if(!event.getWorld().isRemote()) {
 			WorldSigns.worldSigns(event.getWorld());
 		}
 	}
 
 	@SubscribeEvent
 	public void onSave(WorldEvent.Save event) {
-		if(!event.getWorld().isRemote) {
+		if(!event.getWorld().isRemote()) {
 			WorldSigns.worldSigns(event.getWorld());
 		}
 	}
-
+	
 	@SubscribeEvent
-	public void oBlockPlace(PlaceEvent event){
-		if(!(event.getPlayer() instanceof EntityPlayerMP)){
+	public void oBlockPlace(EntityPlaceEvent event){
+		EntityPlayer player = Utils.castOrNull(event.getEntity(), EntityPlayer.class);
+		DimensionType dimension = event.getWorld().getDimension().getType();
+		MyBlockPos blockPos = new MyBlockPos(event.getPos(), dimension);
+		if(!(player instanceof EntityPlayerMP)){
 			if(event.getState().getBlock() instanceof BasePost){
-				BasePost.placeClient(event.getWorld(), new MyBlockPos("", event.getPos(), event.getPlayer().dimension), event.getPlayer());
+				BasePost.placeClient(event.getWorld(), blockPos, player);
 			}else if(event.getState().getBlock() instanceof BaseModelPost){
-				BaseModelPost.placeClient(event.getWorld(), new MyBlockPos("", event.getPos(), event.getPlayer().dimension), event.getPlayer());
+				BaseModelPost.placeClient(event.getWorld(), blockPos, player);
 			}else if(event.getState().getBlock() instanceof SuperPostPost){
-				SuperPostPost.placeClient(event.getWorld(), new MyBlockPos("", event.getPos(), event.getPlayer().dimension), event.getPlayer());
+				SuperPostPost.placeClient(event.getWorld(), blockPos, player);
 			}
 			return;
 		}
-		EntityPlayerMP player = (EntityPlayerMP)event.getPlayer();
+		EntityPlayerMP playerMP = (EntityPlayerMP) player;
 		if(event.getState().getBlock() instanceof BasePost){
 			BasePostTile tile = BasePost.getWaystoneRootTile(event.getWorld(), event.getPos());
-			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canPlace(player) && checkWaystoneCount(player))){
-				tile.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canPlace(playerMP) && checkWaystoneCount(playerMP))){
+				tile.onBlockDestroy(blockPos);
 				event.setCanceled(true);
 			}else{
-				BasePost.placeServer(event.getWorld(), new MyBlockPos(event.getWorld().getWorldInfo().getWorldName(), event.getPos(), event.getPlayer().dimension), (EntityPlayerMP) event.getPlayer());
+				BasePost.placeServer(event.getWorld(), blockPos, playerMP);
 			}
 		}else if(event.getState().getBlock() instanceof BaseModelPost){
 			BasePostTile tile = BaseModelPost.getWaystoneRootTile(event.getWorld(), event.getPos());
-			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canPlace(player) && checkWaystoneCount(player))){
-				tile.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canPlace(playerMP) && checkWaystoneCount(playerMP))){
+				tile.onBlockDestroy(blockPos);
 				event.setCanceled(true);
 			}else{
-				BaseModelPost.placeServer(event.getWorld(), new MyBlockPos(event.getWorld().getWorldInfo().getWorldName(), event.getPos(), event.getPlayer().dimension), (EntityPlayerMP) event.getPlayer());
+				BaseModelPost.placeServer(event.getWorld(), blockPos, playerMP);
 			}
 		}else if(event.getState().getBlock() instanceof SuperPostPost){
 			SuperPostPostTile tile = SuperPostPost.getSuperTile(event.getWorld(), event.getPos());
-			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canPlace(player) && checkSignpostCount(player))){
-				tile.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+			if(!(ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canPlace(playerMP) && checkSignpostCount(playerMP))){
+				tile.onBlockDestroy(blockPos);
 				event.setCanceled(true);
 			}else{
-				SuperPostPost.placeServer(event.getWorld(), new MyBlockPos(event.getWorld().getWorldInfo().getWorldName(), event.getPos(), event.getPlayer().dimension), (EntityPlayerMP) event.getPlayer());
+				SuperPostPost.placeServer(event.getWorld(), blockPos, playerMP);
 			}
 		}
 	}
 
 	public boolean checkWaystoneCount(EntityPlayerMP player){
-		Pair<MyBlockPosSet, Pair<Integer, Integer>> pair = PostHandler.playerKnownWaystonePositions.get(player.getUniqueID());
-		int remaining = pair.b.a;
+		PlayerRestrictions restrictions = PostHandler.playerKnownWaystonePositions.get(player.getUniqueID());
+		int remaining = restrictions.remainingWaystones;
 		if(remaining == 0){
 			player.sendMessage(new TextComponentString("You are not allowed to place more waystones"));
 			return false;
-		}else{
-			if(remaining > 0){
-				pair.b.a--;
-			}
-			return true;
 		}
+		if(remaining > 0) restrictions.remainingWaystones--;
+		return true;
 	}
 	
 	public void updateWaystoneCount(WaystoneContainer tile){
@@ -239,33 +227,30 @@ public class SPEventHandler {
 		if(owner == null){
 			return;
 		}
-		Pair<MyBlockPosSet, Pair<Integer, Integer>> pair = PostHandler.playerKnownWaystonePositions.get(owner);
-		if(pair!=null && pair.b.a>=0){
-			pair.b.a++;
+		PlayerRestrictions restrictions = PostHandler.playerKnownWaystonePositions.get(owner);
+		if(restrictions.remainingWaystones >= 0){
+			restrictions.remainingWaystones++;
 		}
 	}
 
 	private boolean checkSignpostCount(EntityPlayerMP player){
-		Pair<MyBlockPosSet, Pair<Integer, Integer>> pair = PostHandler.playerKnownWaystonePositions.get(player.getUniqueID());
-		int remaining = pair.b.b;
+		PlayerRestrictions restrictions = PostHandler.playerKnownWaystonePositions.get(player.getUniqueID());
+		int remaining = restrictions.remainingSignposts;
 		if(remaining == 0){
 			player.sendMessage(new TextComponentString("You are not allowed to place more signposts"));
 			return false;
-		}else{
-			if(remaining > 0){
-				pair.b.b--;
-			}
-			return true;
 		}
+		if(remaining > 0) restrictions.remainingSignposts--;
+		return true;
 	}
 	
 	private void updateSignpostCount(SuperPostPostTile tile){
 		if(tile == null || tile.owner == null){
 			return;
 		}
-		Pair<MyBlockPosSet, Pair<Integer, Integer>> pair = PostHandler.playerKnownWaystonePositions.get(tile.owner);
-		if(pair.b.b>=0){
-			pair.b.b++;
+		PlayerRestrictions restrictions = PostHandler.playerKnownWaystonePositions.get(tile.owner);
+		if(restrictions.remainingSignposts >= 0){
+			restrictions.remainingSignposts++;
 		}
 	}
 
@@ -279,9 +264,9 @@ public class SPEventHandler {
 							|| event.getPlayer().getHeldItemMainhand().getItem() instanceof CalibratedPostWrench
 							|| event.getPlayer().getHeldItemMainhand().getItem().equals(Items.WHEAT_SEEDS)
 							|| event.getPlayer().getHeldItemMainhand().getItem().equals(Items.SNOWBALL)
-							|| event.getPlayer().getHeldItemMainhand().getItem().equals(Item.getItemFromBlock(Blocks.VINE)))){
+							|| event.getPlayer().getHeldItemMainhand().getItem().equals(Blocks.VINE.asItem()))){
 				event.setCanceled(true);
-				((SuperPostPost)tile.getBlockType()).onBlockClicked(event.getWorld(), event.getPos(), event.getPlayer());
+				((SuperPostPost)tile.getBlockState().getBlock()).onBlockClicked(event.getWorld(), event.getPos(), event.getPlayer());
 				return;
 			}
 			if(!(event.getPlayer() instanceof EntityPlayerMP)){
@@ -294,7 +279,7 @@ public class SPEventHandler {
 					event.setCanceled(true);
 				}else{
 					updateWaystoneCount(t);
-					t.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+					t.onBlockDestroy(new MyBlockPos(event.getPos(), player.dimension));
 				}
 			}else if(event.getState().getBlock() instanceof BaseModelPost){
 				BasePostTile t = BaseModelPost.getWaystoneRootTile(event.getWorld(), event.getPos());
@@ -302,7 +287,7 @@ public class SPEventHandler {
 					event.setCanceled(true);
 				}else{
 					updateWaystoneCount(t);
-					t.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+					t.onBlockDestroy(new MyBlockPos(event.getPos(), player.dimension));
 				}
 			}else if(event.getState().getBlock() instanceof SuperPostPost){
 				SuperPostPostTile t = SuperPostPost.getSuperTile(event.getWorld(), event.getPos());
@@ -310,7 +295,7 @@ public class SPEventHandler {
 					event.setCanceled(true);
 				}else{
 					updateSignpostCount(t);
-					t.onBlockDestroy(new MyBlockPos(event.getWorld(), event.getPos(), player.dimension));
+					t.onBlockDestroy(new MyBlockPos(event.getPos(), player.dimension));
 				}
 			}
 		}catch(Exception e){}

@@ -1,16 +1,16 @@
 package gollorum.signpost.network.handlers;
 
+import java.util.function.Supplier;
+
 import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.network.messages.InitPlayerResponseMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
+import net.minecraftforge.fml.network.NetworkEvent.Context;
 
-public class InitPlayerResponseHandler implements IMessageHandler<InitPlayerResponseMessage, IMessage>{
+public class InitPlayerResponseHandler extends Handler<InitPlayerResponseHandler, InitPlayerResponseMessage>{
 
 	@Override
-	public IMessage onMessage(InitPlayerResponseMessage message, MessageContext ctx) {
+	public void handle(InitPlayerResponseMessage message, Supplier<Context> contextSupplier) {
 		if(!message.deactivateTeleportation){
 			PostHandler.setNativeWaystones(message.allWaystones);
 		}
@@ -29,7 +29,6 @@ public class InitPlayerResponseHandler implements IMessageHandler<InitPlayerResp
 	    ClientConfigStorage.INSTANCE.setVillageWaystonesWeight(message.villageWaystonesWeight);
 	    ClientConfigStorage.INSTANCE.setOnlyVillageTargets(message.onlyVillageTargets);
 		ClientConfigStorage.INSTANCE.postInit();
-		return null;
 	}
 
 }

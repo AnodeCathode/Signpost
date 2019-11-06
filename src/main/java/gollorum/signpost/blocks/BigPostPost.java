@@ -232,11 +232,11 @@ public class BigPostPost extends SuperPostPost {
 			BigPostPostTile tile = (BigPostPostTile)superTile;
 			BaseInfo destination = tile.getBases().sign.base;
 			if (destination != null) {
-				if(destination.pos==null){
+				if(destination.teleportPosition==null){
 					NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.noTeleport"), (EntityPlayerMP) player);
 				}else{
-					int stackSize = PostHandler.getStackSize(destination.pos, tile.toPos());
-					if(PostHandler.canPay(player, destination.pos.x, destination.pos.y, destination.pos.z, x, y, z)){
+					int stackSize = PostHandler.getStackSize(destination.teleportPosition, tile.toPos());
+					if(PostHandler.canPay(player, destination.teleportPosition.x, destination.teleportPosition.y, destination.teleportPosition.z, x, y, z)){
 						PostHandler.teleportMe(destination, (EntityPlayerMP) player, stackSize);
 					}else{
 						String[] keyword = { "<itemName>", "<amount>" };

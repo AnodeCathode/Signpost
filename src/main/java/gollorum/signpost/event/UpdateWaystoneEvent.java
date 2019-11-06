@@ -1,7 +1,7 @@
 package gollorum.signpost.event;
 
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.eventhandler.Event;
+import net.minecraftforge.eventbus.api.Event;
 
 /**
  * Server-side only

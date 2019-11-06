@@ -1,9 +1,8 @@
 package gollorum.signpost.network.messages;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraft.network.PacketBuffer;
 
-public class OpenGuiMessage implements IMessage {
+public class OpenGuiMessage extends Message<OpenGuiMessage> {
 
 	public int guiID;
 	public int x, y, z;
@@ -18,19 +17,19 @@ public class OpenGuiMessage implements IMessage {
 	}
 	
 	@Override
-	public void toBytes(ByteBuf buf) {
-		buf.writeInt(guiID);
-		buf.writeInt(x);
-		buf.writeInt(y);
-		buf.writeInt(z);
+	public void encode(PacketBuffer buffer) {
+		buffer.writeInt(guiID);
+		buffer.writeInt(x);
+		buffer.writeInt(y);
+		buffer.writeInt(z);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		guiID = buf.readInt();
-		x = buf.readInt();
-		y = buf.readInt();
-		z = buf.readInt();
+	public void decode(PacketBuffer buffer) {
+		guiID = buffer.readInt();
+		x = buffer.readInt();
+		y = buffer.readInt();
+		z = buffer.readInt();
 	}
 
 }

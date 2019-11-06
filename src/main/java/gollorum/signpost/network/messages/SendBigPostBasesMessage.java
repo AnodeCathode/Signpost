@@ -2,14 +2,13 @@ package gollorum.signpost.network.messages;
 
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.blocks.tiles.SuperPostPostTile;
+import gollorum.signpost.network.NetworkUtil;
 import gollorum.signpost.util.BigBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
-import io.netty.buffer.ByteBuf;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class SendBigPostBasesMessage implements IMessage {
+public class SendBigPostBasesMessage extends Message<SendBigPostBasesMessage> {
 
 	public MyBlockPos pos;
 	public String base;
@@ -47,36 +46,36 @@ public class SendBigPostBasesMessage implements IMessage {
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
-		pos.toBytes(buf);
-		ByteBufUtils.writeUTF8String(buf, base);
+	public void encode(PacketBuffer buf) {
+		pos.encode(buf);
+		buf.writeString(base);
 		buf.writeInt(baserot);
 		buf.writeBoolean(flip);
-		ByteBufUtils.writeUTF8String(buf, overlay);
+		buf.writeString(overlay);
 		buf.writeBoolean(point);
 		buf.writeInt(description.length);
 		for(String now: description){
-			ByteBufUtils.writeUTF8String(buf, now);
+			buf.writeString(now);
 		}
-		ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(paint));
-		ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(postPaint));
+		buf.writeString(SuperPostPostTile.locToString(paint));
+		buf.writeString(SuperPostPostTile.locToString(postPaint));
 		buf.writeByte(paintObjectIndex);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		pos = MyBlockPos.fromBytes(buf);
-		base = ByteBufUtils.readUTF8String(buf);
+	public void decode(PacketBuffer buf) {
+		pos = MyBlockPos.decode(buf);
+		base = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		baserot = buf.readInt();
 		flip = buf.readBoolean();
-		overlay = ByteBufUtils.readUTF8String(buf);
+		overlay = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		point = buf.readBoolean();
 		description = new String[buf.readInt()];
 		for(int i=0; i<description.length; i++){
-			description[i] = ByteBufUtils.readUTF8String(buf);
+			description[i] = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		}
-		paint = SuperPostPostTile.stringToLoc(ByteBufUtils.readUTF8String(buf));
-		postPaint = SuperPostPostTile.stringToLoc(ByteBufUtils.readUTF8String(buf));
+		paint = SuperPostPostTile.stringToLoc(buf.readString(NetworkUtil.MAX_STRING_LENGTH));
+		postPaint = SuperPostPostTile.stringToLoc(buf.readString(NetworkUtil.MAX_STRING_LENGTH));
 		paintObjectIndex = buf.readByte();
 	}
 

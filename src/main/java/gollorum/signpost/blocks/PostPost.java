@@ -255,11 +255,11 @@ public class PostPost extends SuperPostPost {
 			}
 			BaseInfo destination = hit.target == HitTarget.BASE1 ? tile.getBases().sign1.base : tile.getBases().sign2.base;
 			if (destination != null) {
-				if(destination.pos==null){
+				if(destination.teleportPosition==null){
 					NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.noTeleport"), (EntityPlayerMP) player);
 				}else{
-					int stackSize = PostHandler.getStackSize(destination.pos, tile.toPos());
-					if(PostHandler.canPay(player, destination.pos.x, destination.pos.y, destination.pos.z, x, y, z)){
+					int stackSize = PostHandler.getStackSize(destination.teleportPosition, tile.toPos());
+					if(PostHandler.canPay(player, destination.teleportPosition.x, destination.teleportPosition.y, destination.teleportPosition.z, x, y, z)){
 						PostHandler.teleportMe(destination, (EntityPlayerMP) player, stackSize);
 					}else{
 						String[] keyword = { "<itemName>", "<amount>" };

@@ -3,11 +3,11 @@ package gollorum.signpost.network.messages;
 import java.util.Collection;
 import java.util.HashSet;
 
-import io.netty.buffer.ByteBuf;
+import gollorum.signpost.network.NetworkUtil;
+import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class SendAllWaystoneNamesMessage implements IMessage {
+public class SendAllWaystoneNamesMessage extends Message<SendAllWaystoneNamesMessage> {
 
 	public Collection<String> waystones;
 
@@ -19,22 +19,20 @@ public class SendAllWaystoneNamesMessage implements IMessage {
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
+	public void decode(PacketBuffer buf) {
 		int count = buf.readInt();
 		waystones = new HashSet<String>(count);
 		for (int i = 0; i < count; i++) {
-			String name = ByteBufUtils.readUTF8String(buf);
+			String name = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 			waystones.add(name);
-			System.out.println("FromBytes: "+name);
 		}
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
+	public void encode(PacketBuffer buf) {
 		buf.writeInt(waystones.size());
 		for (String name : waystones) {
-			ByteBufUtils.writeUTF8String(buf, name);
-			System.out.println("ToBytes: "+name);
+			buf.writeString(name);
 		}
 	}
 

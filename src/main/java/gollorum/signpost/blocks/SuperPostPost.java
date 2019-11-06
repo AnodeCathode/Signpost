@@ -35,6 +35,7 @@ import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -43,7 +44,7 @@ public abstract class SuperPostPost extends BlockContainer {
 	protected SuperPostPost(Material materialIn) {super(materialIn);}
 
 	@Override
-	public void onBlockClicked(World world, BlockPos pos, EntityPlayer player) {
+	public void onBlockClicked(IWorld world, BlockPos pos, EntityPlayer player) {
 		SuperPostPostTile superTile = getSuperTile(world, pos);
 		if (world.isRemote || !ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)) {
 			return;
@@ -234,7 +235,7 @@ public abstract class SuperPostPost extends BlockContainer {
 	public abstract void sendPostBasesToAll(SuperPostPostTile superTile);
 	public abstract void sendPostBasesToServer(SuperPostPostTile superTile);
 	
-	public static SuperPostPostTile getSuperTile(World world, BlockPos pos){
+	public static SuperPostPostTile getSuperTile(IWorld world, BlockPos pos){
 		return (SuperPostPostTile) world.getTileEntity(pos);
 	}
     
@@ -290,11 +291,11 @@ public abstract class SuperPostPost extends BlockContainer {
 		return BlockRenderLayer.TRANSLUCENT;
 	}
 
-	public static void placeClient(World world, MyBlockPos blockPos, EntityPlayer player) {
+	public static void placeClient(IWorld world, MyBlockPos blockPos, EntityPlayer player) {
 		getSuperTile(world, blockPos.toBlockPos()).owner = player.getUniqueID();
 	}
 
-	public static void placeServer(World world, MyBlockPos blockPos, EntityPlayerMP player) {
+	public static void placeServer(IWorld world, MyBlockPos blockPos, EntityPlayerMP player) {
 		getSuperTile(world, blockPos.toBlockPos()).owner = player.getUniqueID();
 	}
 

@@ -1,41 +1,43 @@
 package gollorum.signpost.network.handlers;
 
+import java.util.function.Supplier;
+
 import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.management.ConfigHandler;
 import gollorum.signpost.management.PostHandler;
+import gollorum.signpost.network.NetworkHandler;
 import gollorum.signpost.network.messages.TeleportRequestMessage;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.text.TextComponentString;
-import net.minecraftforge.fml.client.FMLClientHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.LogicalSide;
+import net.minecraftforge.fml.network.NetworkEvent.Context;
 
-public class TeleportRequestHandler implements IMessageHandler<TeleportRequestMessage, IMessage> {
+public class TeleportRequestHandler extends Handler<TeleportRequestHandler, TeleportRequestMessage> {
 
 	@Override
-	public IMessage onMessage(TeleportRequestMessage message, MessageContext ctx) {
-		if(ctx.side.equals(Side.SERVER)){
-			PostHandler.confirm(ctx.getServerHandler().player);
+	public void handle(TeleportRequestMessage message, Supplier<Context> contextSupplier) {
+		EntityPlayerMP player = contextSupplier.get().getSender();
+		if(contextSupplier.get().getDirection().getReceptionSide().equals(LogicalSide.SERVER)){
+			PostHandler.confirm(player);
 		}else{
 			if(ClientConfigStorage.INSTANCE.skipTeleportConfirm()){
-				return message;
+				NetworkHandler.sendTo(player, message);
 			}else{
 				String out;
 				if(ClientConfigStorage.INSTANCE.getCost()!=null){
-					out = I18n.format("signpost.confirmTeleport");
-					out = out.replaceAll("<Waystone>", message.waystoneName);
-					out = out.replaceAll("<amount>", Integer.toString(message.stackSize));
-					out = out.replaceAll("<itemName>", ConfigHandler.costName());
+					out = I18n.format("signpost.confirmTeleport")
+						.replaceAll("<Waystone>", message.waystoneName)
+						.replaceAll("<amount>", Integer.toString(message.stackSize))
+						.replaceAll("<itemName>", ConfigHandler.costName());
 				}else{
-					out = I18n.format("signpost.confirmTeleportNoCost");
-					out = out.replaceAll("<Waystone>", message.waystoneName);
+					out = I18n.format("signpost.confirmTeleportNoCost")
+						.replaceAll("<Waystone>", message.waystoneName);
 				}
-				FMLClientHandler.instance().getClient().player.sendMessage(new TextComponentString(out));
+				Minecraft.getInstance().player.sendMessage(new TextComponentString(out));
 			}
 		}
-		return null;
 	}
 
 	public String getReplacement(String replace){

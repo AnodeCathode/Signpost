@@ -1,10 +1,10 @@
 package gollorum.signpost.network.messages;
 
-import io.netty.buffer.ByteBuf;
+import gollorum.signpost.network.NetworkUtil;
+import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class TeleportRequestMessage implements IMessage {
+public class TeleportRequestMessage extends Message<TeleportRequestMessage> {
 
 	public int stackSize;
 	public String waystoneName;
@@ -17,15 +17,15 @@ public class TeleportRequestMessage implements IMessage {
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
+	public void encode(PacketBuffer buf) {
 		buf.writeInt(stackSize);
-		ByteBufUtils.writeUTF8String(buf, waystoneName);
+		buf.writeString(waystoneName);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
+	public void decode(PacketBuffer buf) {
 		stackSize = buf.readInt();
-		waystoneName = ByteBufUtils.readUTF8String(buf);
+		waystoneName = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 	}
 
 }

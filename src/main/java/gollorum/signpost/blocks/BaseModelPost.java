@@ -34,6 +34,7 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.IStringSerializable;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -155,7 +156,7 @@ public class BaseModelPost extends BlockContainer {
 		return new BasePostTile().setup();
 	}
 
-	public static BasePostTile getWaystoneRootTile(World world, BlockPos pos) {
+	public static BasePostTile getWaystoneRootTile(IWorld world, BlockPos pos) {
 		TileEntity ret = world.getTileEntity(pos);
 		if (ret instanceof BasePostTile) {
 			return (BasePostTile) ret;
@@ -164,7 +165,7 @@ public class BaseModelPost extends BlockContainer {
 		}
 	}
 
-	public static void placeServer(World world, MyBlockPos blockPos, EntityPlayerMP player) {
+	public static void placeServer(IWorld world, MyBlockPos blockPos, EntityPlayerMP player) {
 		MyBlockPos telePos = new MyBlockPos(player);
 		BasePostTile tile = getWaystoneRootTile(world, blockPos.toBlockPos());
 		String name = BasePost.generateName();
@@ -182,7 +183,7 @@ public class BaseModelPost extends BlockContainer {
 		NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, blockPos.x, blockPos.y, blockPos.z), player);
 	}
 
-	public static void placeClient(final World world, final MyBlockPos pos, final EntityPlayer player) {
+	public static void placeClient(final IWorld world, final MyBlockPos pos, final EntityPlayer player) {
 //		BasePostTile tile = getWaystoneRootTile(world, pos.toBlockPos());
 //		if (tile != null && tile.getBaseInfo() == null) {
 //			BaseInfo ws = PostHandler.allWaystones.getByPos(pos);

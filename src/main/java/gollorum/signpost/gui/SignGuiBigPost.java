@@ -189,7 +189,7 @@ public class SignGuiBigPost extends GuiScreen implements SignInput {
 			if(connect.equals(Connection.DIST)){
 				
 				String out = I18n.format("signpost.guiTooFar");
-				out = out.replaceAll("<distance>", ""+(int)tile.toPos().distance(inf.pos)+1);
+				out = out.replaceAll("<distance>", ""+(int)tile.toPos().distance(inf.teleportPosition)+1);
 				out = out.replaceAll("<maxDist>", ""+ClientConfigStorage.INSTANCE.getMaxDist());
 				std = out;
 				col = Color.red.getRGB();
@@ -214,9 +214,9 @@ public class SignGuiBigPost extends GuiScreen implements SignInput {
 
 			if(!(ClientConfigStorage.INSTANCE.deactivateTeleportation()||ClientConfigStorage.INSTANCE.getCost()==null)){
 				String out = I18n.format("signpost.guiPrev");
-				int distance = (int) tile.toPos().distance(inf.pos)+1;
+				int distance = (int) tile.toPos().distance(inf.teleportPosition)+1;
 				out = out.replaceAll("<distance>", ""+distance);
-				out = out.replaceAll("<amount>", Integer.toString((int) (tile.toPos().distance(inf.pos)/ClientConfigStorage.INSTANCE.getCostMult()+1)));
+				out = out.replaceAll("<amount>", Integer.toString((int) (tile.toPos().distance(inf.teleportPosition)/ClientConfigStorage.INSTANCE.getCostMult()+1)));
 				out = out.replaceAll("<itemName>", ConfigHandler.costName());
 				col = Color.white.getRGB();
 				std = out;

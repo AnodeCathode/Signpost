@@ -10,7 +10,7 @@ import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.code.MinecraftDependent;
 import gollorum.signpost.util.collections.Lurchpaerchensauna;
 import gollorum.signpost.util.collections.Lurchsauna;
-import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.INBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 
 @MinecraftDependent
@@ -74,7 +74,7 @@ public class VillageLibrary {
 
 	private NBTTagCompound saveWaystones() {
 		NBTTagCompound compound = new NBTTagCompound();
-		compound.setInteger("WaystoneCount", villageWaystones.size());
+		compound.setInt("WaystoneCount", villageWaystones.size());
 		int i=0;
 		for(Entry<MyBlockPos, MyBlockPos> now: villageWaystones.entrySet()){
 			compound.setTag("Waystone"+(i++), saveWaystone(now.getKey(), now.getValue()));
@@ -82,7 +82,7 @@ public class VillageLibrary {
 		return compound;
 	}
 
-	private NBTBase saveWaystone(MyBlockPos villageLocation, MyBlockPos waystoneLocation) {
+	private INBTBase saveWaystone(MyBlockPos villageLocation, MyBlockPos waystoneLocation) {
 		NBTTagCompound compound = new NBTTagCompound();
 		compound.setTag("VillageLocation", villageLocation.writeToNBT(new NBTTagCompound()));
 		compound.setTag("WaystoneLocation", waystoneLocation.writeToNBT(new NBTTagCompound()));
@@ -91,7 +91,7 @@ public class VillageLibrary {
 	
 	private NBTTagCompound savePosts() {
 		NBTTagCompound compound = new NBTTagCompound();
-		compound.setInteger("PostCount", villagePosts.size());
+		compound.setInt("PostCount", villagePosts.size());
 		int i=0;
 		for(Entry<MyBlockPos, Set<VillagePost>> now: villagePosts.entrySet()){
 			compound.setTag("Posts"+(i++), savePostCollection(now.getKey(), now.getValue()));
@@ -99,10 +99,10 @@ public class VillageLibrary {
 		return compound;
 	}
 	
-	private NBTBase savePostCollection(MyBlockPos villageLocation, Set<VillagePost> posts) {
+	private INBTBase savePostCollection(MyBlockPos villageLocation, Set<VillagePost> posts) {
 		NBTTagCompound compound = new NBTTagCompound();
 		compound.setTag("VillageLocation", villageLocation.writeToNBT(new NBTTagCompound()));
-		compound.setInteger("PostCount", posts.size());
+		compound.setInt("PostCount", posts.size());
 		int i=0;
 		for(VillagePost now: posts){
 			compound.setTag("Post"+(i++), now.save());
@@ -111,27 +111,27 @@ public class VillageLibrary {
 	}
 	
 	public void load(NBTTagCompound compound){
-		loadWaystones(compound.getCompoundTag("Waystones"));
-		loadSignpost(compound.getCompoundTag("Signposts"));
+		loadWaystones(compound.getCompound("Waystones"));
+		loadSignpost(compound.getCompound("Signposts"));
 	}
 	
 	private void loadWaystones(NBTTagCompound compound) {
 		villageWaystones = new Lurchpaerchensauna<MyBlockPos, MyBlockPos>();
-		int count = compound.getInteger("WaystoneCount");
+		int count = compound.getInt("WaystoneCount");
 		for(int i=0; i<count; i++){
-			NBTTagCompound entry = compound.getCompoundTag("Waystone"+i);
-			MyBlockPos villageLocation = MyBlockPos.readFromNBT(entry.getCompoundTag("VillageLocation"));
-			MyBlockPos waystoneLocation = MyBlockPos.readFromNBT(entry.getCompoundTag("WaystoneLocation"));
+			NBTTagCompound entry = compound.getCompound("Waystone"+i);
+			MyBlockPos villageLocation = MyBlockPos.readFromNBT(entry.getCompound("VillageLocation"));
+			MyBlockPos waystoneLocation = MyBlockPos.readFromNBT(entry.getCompound("WaystoneLocation"));
 			villageWaystones.put(villageLocation, waystoneLocation);
 		}
 	}
 
 	private void loadSignpost(NBTTagCompound compound) {
 		villagePosts = new Lurchpaerchensauna<MyBlockPos, Set<VillagePost>>();
-		int postCount = compound.getInteger("PostCount");
+		int postCount = compound.getInt("PostCount");
 		for(int i=0; i<postCount; i++){
-			NBTTagCompound entry = compound.getCompoundTag("Posts"+i);
-			MyBlockPos villageLocation = MyBlockPos.readFromNBT(entry.getCompoundTag("VillageLocation"));
+			NBTTagCompound entry = compound.getCompound("Posts"+i);
+			MyBlockPos villageLocation = MyBlockPos.readFromNBT(entry.getCompound("VillageLocation"));
 			Set<VillagePost> posts = loadPostSet(entry);
 			villagePosts.put(villageLocation, posts);
 		}
@@ -139,9 +139,9 @@ public class VillageLibrary {
 	
 	private Set<VillagePost> loadPostSet(NBTTagCompound compound) {
 		Set<VillagePost> ret = new Lurchsauna<VillagePost>();
-		int postCount = compound.getInteger("PostCount");
+		int postCount = compound.getInt("PostCount");
 		for(int i=0; i<postCount; i++){
-			ret.add(VillagePost.load(compound.getCompoundTag("Post"+i)));
+			ret.add(VillagePost.load(compound.getCompound("Post"+i)));
 		}
 		return ret;
 	}

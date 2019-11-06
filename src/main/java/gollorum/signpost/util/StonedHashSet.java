@@ -3,15 +3,15 @@ package gollorum.signpost.util;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 import gollorum.signpost.management.PostHandler;
-import gollorum.signpost.util.collections.Lurchsauna;
 
-public class StonedHashSet extends Lurchsauna<BaseInfo>{
+public class StonedHashSet extends HashSet<BaseInfo>{
 
 	public BaseInfo getByPos(MyBlockPos pos){
 		for(BaseInfo now: this){
-			if(now.blockPos.equals(pos)){
+			if(now.blockPosition.equals(pos)){
 				return now;
 			}
 		}
@@ -94,8 +94,16 @@ public class StonedHashSet extends Lurchsauna<BaseInfo>{
 	public Collection<MyBlockPos> positions() {
 		Set<MyBlockPos> positions = new HashSet<MyBlockPos>(size());
 		for (BaseInfo now : this) {
-			positions.add(now.blockPos);
+			positions.add(now.blockPosition);
 		}
 		return positions;
+	}
+	
+	public <T> Collection<T> select(Function<BaseInfo, T> mapping){
+		HashSet<T> ret = new HashSet<T>();
+		for(BaseInfo info: this) {
+			ret.add(mapping.apply(info));
+		}
+		return ret;
 	}
 }

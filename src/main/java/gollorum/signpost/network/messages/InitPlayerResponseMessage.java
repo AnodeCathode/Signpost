@@ -4,13 +4,13 @@ import gollorum.signpost.management.ConfigHandler;
 import gollorum.signpost.management.ConfigHandler.RecipeCost;
 import gollorum.signpost.management.ConfigHandler.SecurityLevel;
 import gollorum.signpost.management.PostHandler;
+import gollorum.signpost.network.NetworkUtil;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.StonedHashSet;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraft.network.PacketBuffer;
 
-public class InitPlayerResponseMessage implements IMessage{
+@SuppressWarnings("deprecation")
+public class InitPlayerResponseMessage extends Message<InitPlayerResponseMessage> {
 
 	public StonedHashSet allWaystones = new StonedHashSet();
 
@@ -53,52 +53,52 @@ public class InitPlayerResponseMessage implements IMessage{
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
-		buf.writeBoolean(deactivateTeleportation);
+	public void encode(PacketBuffer buffer) {
+		buffer.writeBoolean(deactivateTeleportation);
 		if(!ConfigHandler.isDeactivateTeleportation()){
-			buf.writeInt(allWaystones.size());
+			buffer.writeInt(allWaystones.size());
 			for(BaseInfo now:allWaystones){
-				now.toBytes(buf);
+				now.encode(buffer);
 			}
 		}
-		buf.writeBoolean(interdimensional);
-		buf.writeInt(maxDist);
-		ByteBufUtils.writeUTF8String(buf, paymentItem);
-		buf.writeInt(costMult);
-		ByteBufUtils.writeUTF8String(buf, signRec.name());
-		ByteBufUtils.writeUTF8String(buf, waysRec.name());
-		ByteBufUtils.writeUTF8String(buf, securityLevelWaystone.name());
-		ByteBufUtils.writeUTF8String(buf, securityLevelSignpost.name());
-		buf.writeBoolean(disableVillageGeneration);
-		buf.writeInt(villageMaxSignposts);
-		buf.writeInt(villageSignpostsWeight);
-		buf.writeInt(villageWaystonesWeight);
-	    buf.writeBoolean(onlyVillageTargets);
+		buffer.writeBoolean(interdimensional);
+		buffer.writeInt(maxDist);
+		buffer.writeString(paymentItem);
+		buffer.writeInt(costMult);
+		buffer.writeString(signRec.name());
+		buffer.writeString(waysRec.name());
+		buffer.writeString(securityLevelWaystone.name());
+		buffer.writeString(securityLevelSignpost.name());
+		buffer.writeBoolean(disableVillageGeneration);
+		buffer.writeInt(villageMaxSignposts);
+		buffer.writeInt(villageSignpostsWeight);
+		buffer.writeInt(villageWaystonesWeight);
+	    buffer.writeBoolean(onlyVillageTargets);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		deactivateTeleportation = buf.readBoolean();
+	public void decode(PacketBuffer buffer) {
+		deactivateTeleportation = buffer.readBoolean();
 		if(!deactivateTeleportation){
 			allWaystones = new StonedHashSet();
-			int c = buf.readInt();
+			int c = buffer.readInt();
 			for(int i=0; i<c; i++){
-				allWaystones.add(BaseInfo.fromBytes(buf));
+				allWaystones.add(BaseInfo.decode(buffer));
 			}
 		}
-		interdimensional = buf.readBoolean();
-		maxDist = buf.readInt();
-		paymentItem = ByteBufUtils.readUTF8String(buf);
-		costMult = buf.readInt();
-		signRec = RecipeCost.valueOf(ByteBufUtils.readUTF8String(buf));
-		waysRec = RecipeCost.valueOf(ByteBufUtils.readUTF8String(buf));
-		securityLevelWaystone = SecurityLevel.valueOf(ByteBufUtils.readUTF8String(buf));
-		securityLevelSignpost = SecurityLevel.valueOf(ByteBufUtils.readUTF8String(buf));
-		disableVillageGeneration = buf.readBoolean();
-		villageMaxSignposts = buf.readInt();
-		villageSignpostsWeight = buf.readInt();
-		villageWaystonesWeight = buf.readInt(); 
-	    onlyVillageTargets = buf.readBoolean();
+		interdimensional = buffer.readBoolean();
+		maxDist = buffer.readInt();
+		paymentItem = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+		costMult = buffer.readInt();
+		signRec = RecipeCost.valueOf(buffer.readString(NetworkUtil.MAX_STRING_LENGTH));
+		waysRec = RecipeCost.valueOf(buffer.readString(NetworkUtil.MAX_STRING_LENGTH));
+		securityLevelWaystone = SecurityLevel.valueOf(buffer.readString(NetworkUtil.MAX_STRING_LENGTH));
+		securityLevelSignpost = SecurityLevel.valueOf(buffer.readString(NetworkUtil.MAX_STRING_LENGTH));
+		disableVillageGeneration = buffer.readBoolean();
+		villageMaxSignposts = buffer.readInt();
+		villageSignpostsWeight = buffer.readInt();
+		villageWaystonesWeight = buffer.readInt(); 
+	    onlyVillageTargets = buffer.readBoolean();
 	}
 
 }

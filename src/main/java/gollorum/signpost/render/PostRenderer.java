@@ -5,14 +5,12 @@ import org.lwjgl.opengl.GL11;
 import gollorum.signpost.Signpost;
 import gollorum.signpost.blocks.PostPost.PostType;
 import gollorum.signpost.blocks.tiles.PostPostTile;
-import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.util.DoubleBaseInfo;
-import gollorum.signpost.util.MyBlockPos;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
 import net.minecraft.util.ResourceLocation;
 
-public class PostRenderer extends TileEntitySpecialRenderer<PostPostTile>{
+public class PostRenderer extends TileEntityRenderer<PostPostTile>{
 
 	private static final ModelPost model = new ModelPost();
 	
@@ -27,7 +25,7 @@ public class PostRenderer extends TileEntitySpecialRenderer<PostPostTile>{
 	}
 	
 	@Override
-    public void render(PostPostTile tile, double x, double y, double z, float partialTicks, int destroyStage, float alfa){
+    public void render(PostPostTile tile, double x, double y, double z, float partialTicks, int destroyStage){
 		DoubleBaseInfo tilebases = tile.bases;
 		double rotation1 = 0;
 		double rotation2 = 0;

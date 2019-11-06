@@ -75,7 +75,7 @@ class LibraryWaystoneHelper extends LibraryHelper {
 	private boolean containsMeAsTarget(Set<VillagePost> posts) {
 		for(VillagePost post : posts) {
 			for(Sign sign : post.getSigns()) {
-				if(sign != null && sign.isValid() && sign.base != null && sign.base.blockPos != null && sign.base.blockPos.equals(waystoneLocation)){
+				if(sign != null && sign.isValid() && sign.base != null && sign.base.blockPosition != null && sign.base.blockPosition.equals(waystoneLocation)){
 					return true;
 				}
 			}

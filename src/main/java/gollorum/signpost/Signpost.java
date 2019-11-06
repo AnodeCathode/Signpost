@@ -24,26 +24,25 @@ import gollorum.signpost.util.StonedHashSet;
 import gollorum.signpost.util.collections.Lurchpaerchensauna;
 import gollorum.signpost.worldGen.villages.NameLibrary;
 import gollorum.signpost.worldGen.villages.VillageLibrary;
-import net.minecraft.command.ServerCommandManager;
+import net.minecraft.command.Commands;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.Mod.Instance;
-import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerAboutToStartEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
+import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
+import net.minecraftforge.fml.network.NetworkRegistry;
 
-@Mod(modid = Signpost.MODID, version = Signpost.VERSION, name = "SignPost")
-public class Signpost{
-
-	@Instance
+@Mod(Signpost.MODID)
+@EventBusSubscriber(bus = Bus.MOD)
+public class Signpost {
+	
 	public static Signpost instance;
 	public static final String MODID = "signpost";
-	public static final String VERSION = "1.08.3";
 
 	public static final int GuiBaseID = 0;
 	public static final int GuiPostID = 1;
@@ -57,49 +56,43 @@ public class Signpost{
 	public static NBTTagCompound saveFile;
 	public static final Logger LOG = LogManager.getLogger(MODID); 
 	
-	@SidedProxy(clientSide = "gollorum.signpost.ClientProxy", serverSide = "gollorum.signpost.CommonProxy")
-	public static CommonProxy proxy;
-
-	@EventHandler
-	public void preinit(FMLPreInitializationEvent event) {
-
+	public static CommonProxy proxy = DistExecutor.runForDist(() -> ClientProxy::new, () -> CommonProxy::new);
+	
+	private static MinecraftServer dedicatedServerInstance;
+	public static MinecraftServer getServerInstance() { return dedicatedServerInstance; }
+	
+	@SubscribeEvent
+	public void setup(FMLCommonSetupEvent event) {
 		configFolder = new File(event.getModConfigurationDirectory() + "/" + MODID);
 		configFolder.mkdirs();
 		configFile = new File(configFolder.getPath(), MODID + ".cfg");
 		ConfigHandler.init(configFile);
 		NameLibrary.init(configFolder.getPath()); 
 		proxy.preInit();
-        
-	}
-
-	@EventHandler
-	public void init(FMLInitializationEvent event) {
 		NetworkRegistry.INSTANCE.registerGuiHandler(this, new SignGuiHandler());
 		proxy.init();
-	}
-	
-	@EventHandler
-	public void postInit(FMLPostInitializationEvent event){
 		ConfigHandler.postInit();
 		PostHandler.setNativeWaystones(new StonedHashSet());
 		PostHandler.setPosts(new Lurchpaerchensauna<MyBlockPos, DoubleBaseInfo>());
 		PostHandler.setBigPosts(new Lurchpaerchensauna<MyBlockPos, BigBaseInfo>());
 		PostHandler.awaiting = new Lurchpaerchensauna<UUID, TeleportInformation>();
+        
 	}
-	
-	@EventHandler
+
+	@SubscribeEvent
 	public void serverAboutToStart(FMLServerAboutToStartEvent e){
+		dedicatedServerInstance = e.getServer();
 		PostHandler.init();
 		VillageLibrary.init();
 	}
-    
-	@EventHandler
+
+	@SubscribeEvent
 	public void serverStarting(FMLServerStartingEvent e) {
-		registerCommands((ServerCommandManager) e.getServer().getCommandManager());
+		registerCommands(e.getServer().getCommandManager());
 		ConfigHandler.init(configFile);
 	}
 	
-	private void registerCommands(ServerCommandManager manager) {
+	private void registerCommands(Commands manager) {
 		manager.registerCommand(new ConfirmTeleportCommand());
 		manager.registerCommand(new GetWaystoneCount());
 		manager.registerCommand(new GetSignpostCount());
@@ -108,4 +101,6 @@ public class Signpost{
 		manager.registerCommand(new DiscoverWaystone());
 		manager.registerCommand(new ListAllWaystones());
 	}
+
+	
 }

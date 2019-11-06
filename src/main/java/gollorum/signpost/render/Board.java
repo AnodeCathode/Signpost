@@ -1,6 +1,6 @@
 package gollorum.signpost.render;
 
-import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.entity.model.ModelRenderer;
 
 public class Board {
 	

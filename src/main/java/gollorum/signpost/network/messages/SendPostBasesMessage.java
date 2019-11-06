@@ -2,13 +2,12 @@ package gollorum.signpost.network.messages;
 
 import gollorum.signpost.blocks.tiles.PostPostTile;
 import gollorum.signpost.blocks.tiles.SuperPostPostTile;
+import gollorum.signpost.network.NetworkUtil;
 import gollorum.signpost.util.DoubleBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraft.network.PacketBuffer;
 
-public class SendPostBasesMessage implements IMessage {
+public class SendPostBasesMessage extends Message<SendPostBasesMessage> {
 
 	public MyBlockPos pos;
 	
@@ -65,40 +64,40 @@ public class SendPostBasesMessage implements IMessage {
 	}
 
 	@Override
-	public void toBytes(ByteBuf buf) {
-		pos.toBytes(buf);
-		ByteBufUtils.writeUTF8String(buf, base1);
-		ByteBufUtils.writeUTF8String(buf, base2);
+	public void encode(PacketBuffer buf) {
+		pos.encode(buf);
+		buf.writeString(base1);
+		buf.writeString(base2);
 		buf.writeInt(base1rot);
 		buf.writeInt(base2rot);
 		buf.writeBoolean(flip1);
 		buf.writeBoolean(flip2);
-		ByteBufUtils.writeUTF8String(buf, overlay1);
-		ByteBufUtils.writeUTF8String(buf, overlay2);
+		buf.writeString(overlay1);
+		buf.writeString(overlay2);
 		buf.writeBoolean(point1);
 		buf.writeBoolean(point2);
-		ByteBufUtils.writeUTF8String(buf, ""+paint1);
-		ByteBufUtils.writeUTF8String(buf, ""+paint2);
-		ByteBufUtils.writeUTF8String(buf, ""+postPaint);
+		buf.writeString(""+paint1);
+		buf.writeString(""+paint2);
+		buf.writeString(""+postPaint);
 		buf.writeByte(paintObjectIndex);
 	}
 
 	@Override
-	public void fromBytes(ByteBuf buf) {
-		pos = MyBlockPos.fromBytes(buf);
-		base1 = ByteBufUtils.readUTF8String(buf);
-		base2 = ByteBufUtils.readUTF8String(buf);
+	public void decode(PacketBuffer buf) {
+		pos = MyBlockPos.decode(buf);
+		base1 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
+		base2 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		base1rot = buf.readInt();
 		base2rot = buf.readInt();
 		flip1 = buf.readBoolean();
 		flip2 = buf.readBoolean();
-		overlay1 = ByteBufUtils.readUTF8String(buf);
-		overlay2 = ByteBufUtils.readUTF8String(buf);
+		overlay1 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
+		overlay2 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		point1 = buf.readBoolean();
 		point2 = buf.readBoolean();
-		paint1 = ByteBufUtils.readUTF8String(buf);
-		paint2 = ByteBufUtils.readUTF8String(buf);
-		postPaint = ByteBufUtils.readUTF8String(buf);
+		paint1 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
+		paint2 = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
+		postPaint = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
 		paintObjectIndex = buf.readByte();
 	}
 

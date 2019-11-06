@@ -14,23 +14,27 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.MutableBoundingBox;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
-import net.minecraft.world.gen.structure.StructureComponent;
-import net.minecraft.world.gen.structure.StructureVillagePieces;
+import net.minecraft.world.gen.feature.structure.StructurePiece;
+import net.minecraft.world.gen.feature.structure.VillagePieces;
+import net.minecraft.world.gen.feature.structure.VillagePieces.Start;
+import net.minecraft.world.gen.feature.structure.VillagePieces.Village;
 
 @MinecraftDependent
-public class VillageComponentSignpost extends StructureVillagePieces.Village{
+public class VillageComponentSignpost extends Village{
 	
 	private boolean built = false;
-	private StructureVillagePieces.Start start;
+	private Start start;
 	private EnumFacing facing;
 	
 	public VillageComponentSignpost(){
 		super();
 	}
 		
-	public VillageComponentSignpost(StructureVillagePieces.Start start, int type, StructureBoundingBox boundingBox, EnumFacing facing){
+	public VillageComponentSignpost(Start start, int type, MutableBoundingBox boundingBox, EnumFacing facing){
 		super(start, type);
 		this.boundingBox = boundingBox;
 		this.start = start;
@@ -38,8 +42,8 @@ public class VillageComponentSignpost extends StructureVillagePieces.Village{
 	}
 	
 	@Nullable
-	public static StructureVillagePieces.Village buildComponent(StructureVillagePieces.Start startPiece, List<StructureComponent> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
-		StructureBoundingBox boundingBox = StructureBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 3, 3, 3, facing);
+	public static Village buildComponent(VillagePieces.Start startPiece, List<StructurePiece> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
+		MutableBoundingBox boundingBox = MutableBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 3, 3, 3, facing);
 		if (canVillageGoDeeper(boundingBox) && findIntersecting(pieces, boundingBox) == null) {
 			return new VillageComponentSignpost(startPiece, type, boundingBox, facing.getOpposite());
 		}
@@ -47,7 +51,7 @@ public class VillageComponentSignpost extends StructureVillagePieces.Village{
 	}
 
 	@Override
-	public boolean addComponentParts(World world, Random random, StructureBoundingBox boundingBox) {
+	public boolean addComponentParts(IWorld iworld, Random random, MutableBoundingBox boundingBox, ChunkPos chunkPos) {
 		if(built || start==null){
 			return true;
 		}else{
@@ -56,6 +60,7 @@ public class VillageComponentSignpost extends StructureVillagePieces.Village{
 		int x = (this.boundingBox.minX + this.boundingBox.maxX)/2;
 		int z = (this.boundingBox.minZ + this.boundingBox.maxZ)/2;
 		BlockPos postPos;
+		World world = iworld.getWorld();
 		try{
 			postPos = GenerateStructureHelper.getInstance().getTopSolidOrLiquidBlock(world, new BlockPos(x, 0, z));
 		}catch(Exception e) {
@@ -64,7 +69,7 @@ public class VillageComponentSignpost extends StructureVillagePieces.Village{
 		world.setBlockState(postPos, Signpost.proxy.blockHandler.post_oak.getDefaultState());
 		world.setBlockState(postPos.add(0, 1, 0), Signpost.proxy.blockHandler.post_oak.getDefaultState());
 		if (world.getBlockState(postPos.add(0, -1, 0)).getMaterial().isLiquid()) {
-			IBlockState block = this.getBiomeSpecificBlockState(Blocks.PLANKS.getDefaultState());
+			IBlockState block = this.getBiomeSpecificBlockState(Blocks.OAK_PLANKS.getDefaultState());
 			world.setBlockState(postPos.add(0, -1, 0), block);
 			world.setBlockState(postPos.add(-1, -1, -1), block);
 			world.setBlockState(postPos.add(-1, -1, 0), block);
@@ -75,7 +80,7 @@ public class VillageComponentSignpost extends StructureVillagePieces.Village{
 			world.setBlockState(postPos.add(1, -1, 0), block);
 			world.setBlockState(postPos.add(1, -1, 1), block);
 		}
-		StructureBoundingBox villageBox = start.getBoundingBox();
+		MutableBoundingBox villageBox = start.getBoundingBox();
 		MyBlockPos villagePos = new MyBlockPos(world, villageBox.minX, 0, villageBox.minZ);
 		MyBlockPos blockPos = new MyBlockPos(world, postPos.add(0, 1, 0));
 		VillageLibrary.getInstance().putSignpost(villagePos, blockPos, optimalRot(facing));

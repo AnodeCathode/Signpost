@@ -11,13 +11,18 @@ import gollorum.signpost.management.PlayerStorage;
 import gollorum.signpost.management.PlayerStore;
 import gollorum.signpost.network.NetworkHandler;
 import gollorum.signpost.worldGen.villages.VillageHandler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+import net.minecraft.world.dimension.DimensionType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.CapabilityManager;
+import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.network.NetworkEvent.Context;
 
 public class CommonProxy {
 
@@ -37,7 +42,6 @@ public class CommonProxy {
 	void init(){
 		registerBlocksAndItems();
 		registerCapabilities();
-		registerTiles();
 		registerHandlers();
 		registerVillageCreation();
 	} 
@@ -48,8 +52,8 @@ public class CommonProxy {
 
 	private void registerHandlers() {
 		NetworkHandler.register();
-		SPEventHandler handler = SPEventHandler.INSTANCE;
-		MinecraftForge.EVENT_BUS.register(handler);
+		MinecraftForge.EVENT_BUS.register(SPEventHandler.INSTANCE);
+		MinecraftForge.EVENT_BUS.register(TileEntityHandler.INSTANCE);
 	}
 
 	private void registerBlocksAndItems() {
@@ -60,38 +64,10 @@ public class CommonProxy {
 		itemHandler.register();
 	}
 
-	protected void registerTiles(){
-		GameRegistry.registerTileEntity(BasePostTile.class, "SignpostBaseTile");
-		GameRegistry.registerTileEntity(PostPostTile.class, "SignpostPostTile");
-		GameRegistry.registerTileEntity(BigPostPostTile.class, "SignpostBigPostTile");
-	}
-	
 	protected void registerCapabilities() {
 		CapabilityManager.INSTANCE.register(PlayerStore.class, new PlayerStorage(), PlayerStore::new);
 	}
 
-	public World getWorld(MessageContext ctx){
-		return ctx.getServerHandler().player.world;
-	}
-	
-	public World getWorld(String worldName, int dim){
-		return FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(dim);
-	}
-	
-	public World[] getWorlds(){
-		return FMLCommonHandler.instance().getMinecraftServerInstance().worlds;
-	}
-
-	public Collection<EntityPlayer> getAllPlayers(){
-		LinkedList<EntityPlayer> ret = new LinkedList<EntityPlayer>();
-		for(Object now: FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().getPlayers()){
-			if(now instanceof EntityPlayer){
-				ret.add((EntityPlayer) now);
-			}
-		}
-		return ret;
-	}
-	
 	public InputStream getResourceInputStream(String location){
 		return getClass().getResourceAsStream(location);
 	}
