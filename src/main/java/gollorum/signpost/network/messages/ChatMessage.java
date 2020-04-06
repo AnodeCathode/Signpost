@@ -1,10 +1,10 @@
 package gollorum.signpost.network.messages;
 
 import gollorum.signpost.network.NetworkUtil;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
 
-public class ChatMessage extends Message<ChatMessage> {
+public class ChatMessage extends Message<ChatMessage> implements com.mojang.brigadier.Message {
 
 	public String message;
 	public String[] keyword, replacement;
@@ -59,4 +59,22 @@ public class ChatMessage extends Message<ChatMessage> {
 		String ret = replacement[i];
 		return ""+ret;
 	}
+
+	@Override
+	public String getString() {
+		String out = I18n.format(message);
+		for(int i=0; i<keyword.length; i++){
+			out = out.replaceAll(keyword[i], getReplacement(replacement[i]));
+		}
+		return out;
+	}
+
+	public String getReplacement(String replace){
+		String ret = I18n.format(replace);
+		if(!ret.equals("")){
+			return ret;
+		}
+		return replace;
+	}
+
 }

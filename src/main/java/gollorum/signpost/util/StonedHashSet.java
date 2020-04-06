@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 import gollorum.signpost.management.PostHandler;
 
-public class StonedHashSet extends HashSet<BaseInfo>{
+public class StonedHashSet extends ExtendedHashSet<BaseInfo>{
 
 	public BaseInfo getByPos(MyBlockPos pos){
 		for(BaseInfo now: this){
@@ -97,13 +97,5 @@ public class StonedHashSet extends HashSet<BaseInfo>{
 			positions.add(now.blockPosition);
 		}
 		return positions;
-	}
-	
-	public <T> Collection<T> select(Function<BaseInfo, T> mapping){
-		HashSet<T> ret = new HashSet<T>();
-		for(BaseInfo info: this) {
-			ret.add(mapping.apply(info));
-		}
-		return ret;
 	}
 }

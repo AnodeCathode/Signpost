@@ -13,19 +13,17 @@ import gollorum.signpost.network.messages.ChatMessage;
 import gollorum.signpost.network.messages.OpenGuiMessage;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.MyBlockPos;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.BlockHorizontal;
 import net.minecraft.block.material.Material;
-import net.minecraft.block.properties.IProperty;
-import net.minecraft.block.properties.PropertyDirection;
-import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.BlockItemUseContext;
+import net.minecraft.state.DirectionProperty;
+import net.minecraft.state.StateContainer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumBlockRenderType;
@@ -33,7 +31,7 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.IStringSerializable;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
@@ -79,72 +77,57 @@ public class BaseModelPost extends BlockContainer {
 		}
 	}
 
-    public static final PropertyDirection FACING = BlockHorizontal.FACING;
+    public static final DirectionProperty FACING = BlockHorizontal.HORIZONTAL_FACING;
 	public final ModelType type;
 	
 	public BaseModelPost(int typ) {
-		super(Material.ROCK);
-		this.setHarvestLevel("pickaxe", 1);
-		this.setHardness(2);
-		this.setResistance(100000);
-		setCreativeTab(CreativeTabs.TRANSPORTATION);
-		this.setTranslationKey("SignpostBase");
+		super(Properties.from(Blocks.STONE));
+		//super(Properties.create(Material.ROCK).hardnessAndResistance(2, 100000));
+		//this.setHarvestLevel("pickaxe", 1);
+//		setCreativeTab(CreativeTabs.TRANSPORTATION);
+//		this.setTranslationKey("SignpostBase");
 		this.setRegistryName(Signpost.MODID+":blockbasemodel"+typ);
 		type = ModelType.values()[typ];
-		this.setDefaultState(this.blockState.getBaseState().withProperty(FACING, EnumFacing.SOUTH));
+		this.setDefaultState(this.stateContainer.getBaseState().with(FACING, EnumFacing.SOUTH));
 	}
 
 	@Override
-	protected BlockStateContainer createBlockState() {
-	    return new BlockStateContainer(this, new IProperty[] { FACING });
-	}
-
-	@Override
-	public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer){
-		return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
-	} 
-	 
-	public IBlockState getStateForFacing(EnumFacing facing) {
-		return this.getDefaultState().withProperty(FACING, facing);
-	}
-
-	@Override
-	public IBlockState getStateFromMeta(int meta) {
-		return getDefaultState().withProperty(FACING, EnumFacing.byHorizontalIndex(meta));
-	}
-
-	@Override
-	public int getMetaFromState(IBlockState state) {
-		return state.getValue(FACING).getHorizontalIndex();
-	}
-
-	@Override
-	public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player){
-	    return new ItemStack(Item.getItemFromBlock(this), 1, this.getMetaFromState(world.getBlockState(pos)));
+	protected void fillStateContainer(StateContainer.Builder<Block, IBlockState> builder) {
+		super.fillStateContainer(builder);
+		builder.add(FACING);
 	}
 	
 	@Override
-	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
+	public IBlockState getStateForPlacement(BlockItemUseContext context){
+		return this.getDefaultState().with(FACING, context.getPlayer().getHorizontalFacing().getOpposite());
+	} 
+	 
+	public IBlockState getStateForFacing(EnumFacing facing) {
+		return this.getDefaultState().with(FACING, facing);
+	}
+
+	@Override
+	public boolean onBlockActivated(IBlockState state, World worldIn, BlockPos pos, EntityPlayer player, EnumHand hand, EnumFacing side, float hitX, float hitY, float hitZ) {
 		if (ClientConfigStorage.INSTANCE.deactivateTeleportation()) {
 			return false;
 		}
 		if (!worldIn.isRemote) {
 			BaseInfo ws = getWaystoneRootTile(worldIn, pos).getBaseInfo();
 			if(ws==null){
-				ws = new BaseInfo(BasePost.generateName(), new MyBlockPos(worldIn, pos, playerIn.dimension), playerIn.getUniqueID());
+				ws = new BaseInfo(BasePost.generateName(), new MyBlockPos(pos, player.dimension), player.getUniqueID());
 				PostHandler.addWaystone(ws);
 			}
-			if (!playerIn.isSneaking()) {
-				if(!PostHandler.doesPlayerKnowNativeWaystone((EntityPlayerMP) playerIn, ws)){
+			if (!player.isSneaking()) {
+				if(!PostHandler.doesPlayerKnowNativeWaystone((EntityPlayerMP) player, ws)){
 					if (!ClientConfigStorage.INSTANCE.deactivateTeleportation()) {
-						NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()), (EntityPlayerMP) playerIn);
+						NetworkHandler.sendTo((EntityPlayerMP) player, new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()));
 					}
-					PostHandler.addDiscovered(playerIn.getUniqueID(), ws);
+					PostHandler.addDiscovered(player.getUniqueID(), ws);
 				}
 			} else {
 				if (!ClientConfigStorage.INSTANCE.deactivateTeleportation()
-						&& ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canUse((EntityPlayerMP) playerIn, ""+ws.owner)) {
-					NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, pos.getX(), pos.getY(), pos.getZ()), (EntityPlayerMP) playerIn);
+						&& ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canUse((EntityPlayerMP) player, ""+ws.owner)) {
+					NetworkHandler.sendTo((EntityPlayerMP) player, new OpenGuiMessage(Signpost.GuiBaseID, pos.getX(), pos.getY(), pos.getZ()));
 				}
 			}
 		}
@@ -152,8 +135,8 @@ public class BaseModelPost extends BlockContainer {
 	}
 
 	@Override
-	public TileEntity createTileEntity(World world, IBlockState state) {
-		return new BasePostTile().setup();
+	public TileEntity createNewTileEntity(IBlockReader worldIn) {
+		return new BasePostTile();
 	}
 
 	public static BasePostTile getWaystoneRootTile(IWorld world, BlockPos pos) {
@@ -178,39 +161,14 @@ public class BaseModelPost extends BlockContainer {
 			ws.setAll(new BaseInfo(name, blockPos, telePos, owner));
 		}
 		PostHandler.addDiscovered(player.getUniqueID(), ws);
-		NetworkHandler.netWrap.sendToAll(new BaseUpdateClientMessage());
-		MinecraftForge.EVENT_BUS.post(new UpdateWaystoneEvent(UpdateWaystoneEvent.WaystoneEventType.PLACED, world, blockPos.x, blockPos.y, blockPos.z, name));
-		NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, blockPos.x, blockPos.y, blockPos.z), player);
-	}
-
-	public static void placeClient(final IWorld world, final MyBlockPos pos, final EntityPlayer player) {
-//		BasePostTile tile = getWaystoneRootTile(world, pos.toBlockPos());
-//		if (tile != null && tile.getBaseInfo() == null) {
-//			BaseInfo ws = PostHandler.allWaystones.getByPos(pos);
-//			if (ws == null) {
-//				UUID owner = player.getUniqueID();
-//				PostHandler.allWaystones.add(new BaseInfo("", pos, owner));
-//			}
-//		}
-	}
-
-	@Override
-	public TileEntity createNewTileEntity(World worldIn, int meta) {
-		BasePostTile ret = new BasePostTile();
-//		if(!worldIn.isRemote){
-//			ret.setup();
-//		}
-		return ret;
+		NetworkHandler.sendToAll(new BaseUpdateClientMessage());
+		MinecraftForge.EVENT_BUS.post(new UpdateWaystoneEvent(UpdateWaystoneEvent.WaystoneEventType.PLACED, world.getWorld(), blockPos.x, blockPos.y, blockPos.z, name));
+		NetworkHandler.sendTo(player, new OpenGuiMessage(Signpost.GuiBaseID, blockPos.x, blockPos.y, blockPos.z));
 	}
 
 	@Override
 	public EnumBlockRenderType getRenderType(IBlockState state) {
 		return EnumBlockRenderType.MODEL;
-	}
-
-	@Override
-	public boolean isOpaqueCube(IBlockState state) {
-		return false;
 	}
 
 	@Override

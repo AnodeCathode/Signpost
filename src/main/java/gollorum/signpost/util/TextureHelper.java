@@ -1,5 +1,7 @@
 package gollorum.signpost.util;
 
+import java.util.Random;
+
 import gollorum.signpost.blocks.BigPostPost;
 import gollorum.signpost.blocks.PostPost;
 import gollorum.signpost.blocks.SuperPostPost;
@@ -10,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.model.BakedQuad;
 import net.minecraft.client.renderer.model.IBakedModel;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -18,6 +21,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.minecraftforge.client.model.ModelLoader;
 
 public class TextureHelper {
 
@@ -32,40 +36,42 @@ public class TextureHelper {
 	public ResourceLocation getHeldBlockTexture(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
 		try{
 			ItemStack stack = player.inventory.getCurrentItem();
-			ResourceLocation ret;
-
-			Block block = Block.getBlockFromItem(stack.getItem());
-			if(block instanceof PostPost){
-				ret = ((PostPost)block).type.texture;
-			}else if(block instanceof BigPostPost){
-				ret = ((BigPostPost)block).type.texture;
-			}else{
-				IBlockState blockState = blockStateFromPlayer(player, worldIn, pos, hand, facing, hitX, hitY, hitZ);
-				
-				IBakedModel model = Minecraft.getInstance().getRenderItem().getItemModelMesher().getItemModel(stack);
-		
-				Vec3d look = player.getLookVec();
-				EnumFacing side = EnumFacing.getFacingFromVector((float)-look.x, (float)-look.y, (float)-look.z);
-				
-				BakedQuad quad = model.getQuads(blockState, side, 0).get(0);
-				
-				ret = quad.getSprite().getName();
-			}
-			
-			Minecraft.getInstance().getResourceManager().getResource(ret);
-			return ret;
+			// TODO: Test this!
+			return ModelLoader.defaultTextureGetter().apply(stack.getItem().getRegistryName()).getName();
+//			ResourceLocation ret;
+//
+//			Block block = Block.getBlockFromItem(stack.getItem());
+//			if(block instanceof PostPost){
+//				ret = ((PostPost)block).type.texture;
+//			}else if(block instanceof BigPostPost){
+//				ret = ((BigPostPost)block).type.texture;
+//			}else{
+//				IBlockState blockState = blockStateFromPlayer(player, worldIn, pos, hand, facing, hitX, hitY, hitZ);
+//				
+//				IBakedModel model = Minecraft.getInstance().getRenderItem().getItemModelMesher().getItemModel(stack);
+//		
+//				Vec3d look = player.getLookVec();
+//				EnumFacing side = EnumFacing.getFacingFromVector((float)-look.x, (float)-look.y, (float)-look.z);
+//				
+//				BakedQuad quad = model.getQuads(blockState, side, new Random()).get(0);
+//				
+//				ret = quad.getSprite().getName();
+//			}
+//			
+//			Minecraft.getInstance().getResourceManager().getResource(ret);
+//			return ret;
 		}catch(Exception e){return null;}
 	}
 
-	private IBlockState blockStateFromPlayer(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
-		try{
-			ItemStack itemStack = player.inventory.getCurrentItem();
-			Block block = Block.getBlockFromItem(itemStack.getItem());
-			return block.getStateForPlacement(worldIn, pos, facing, hitX, hitY, hitZ, itemStack.getMetadata(), player, hand);
-		}catch(Exception e){
-			return null;
-		}
-	}
+//	private IBlockState blockStateFromPlayer(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
+//		try{
+//			ItemStack itemStack = player.inventory.getCurrentItem();
+//			Block block = Block.getBlockFromItem(itemStack.getItem());
+//			return block.getStateForPlacement(new BlockItemUseContext(worldIn, player, itemStack, pos, facing, hitX, hitY, hitZ));
+//		}catch(Exception e){
+//			return null;
+//		}
+//	}
 
 	public boolean setTexture(BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
 		EntityPlayer player = Minecraft.getInstance().player;
@@ -79,12 +85,8 @@ public class TextureHelper {
 			superTile.getPaintObject().setTexture(texture);
 			superTile.setPaintObject(null);
 			superTile.setAwaitingPaint(false);
-			((SuperPostPost)superTile.getBlockType()).sendPostBasesToServer(superTile);
+			((SuperPostPost)superTile.getBlockState().getBlock()).sendPostBasesToServer(superTile);
 			return true;
 		}
-	}
-	
-	private static boolean endsWithIgnoreCase(String str1, String str2){
-		return str1.length()<str2.length() || str1.substring(str1.length()-str2.length()).equalsIgnoreCase(str2);
 	}
 }

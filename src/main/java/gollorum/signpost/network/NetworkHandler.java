@@ -79,4 +79,7 @@ public class NetworkHandler {
 		HANDLER.send(PacketDistributor.PLAYER.with(() -> player), message);
 	}
 	
+	public static <T extends Message<T>> void sendToServer(T message) {
+		HANDLER.send(PacketDistributor.SERVER.noArg(), message);
+	}
 }

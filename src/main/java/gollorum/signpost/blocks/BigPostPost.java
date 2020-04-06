@@ -18,8 +18,7 @@ import gollorum.signpost.util.Sign.OverlayType;
 import gollorum.signpost.util.math.tracking.Cuboid;
 import gollorum.signpost.util.math.tracking.DDDVector;
 import gollorum.signpost.util.math.tracking.Intersect;
-import net.minecraft.block.material.Material;
-import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -30,6 +29,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 
 public class BigPostPost extends SuperPostPost {
@@ -37,28 +37,26 @@ public class BigPostPost extends SuperPostPost {
 	public BigPostType type;
 
 	public static enum BigPostType{
-						OAK(	Material.WOOD, 	"bigsign_oak", 		"log_oak",		Item.getItemFromBlock(Blocks.LOG),		0),
-						SPRUCE(	Material.WOOD, 	"bigsign_spruce", 	"log_spruce",	Item.getItemFromBlock(Blocks.LOG),		1),
-						BIRCH(	Material.WOOD, 	"bigsign_birch", 	"log_birch",	Item.getItemFromBlock(Blocks.LOG),		2),
-						JUNGLE(	Material.WOOD,	"bigsign_jungle", 	"log_jungle",	Item.getItemFromBlock(Blocks.LOG),		3),
-						ACACIA(	Material.WOOD, 	"bigsign_acacia", 	"log_acacia",	Item.getItemFromBlock(Blocks.LOG2),		0),
-						BIGOAK(	Material.WOOD, 	"bigsign_big_oak", 	"log_big_oak",	Item.getItemFromBlock(Blocks.LOG2),		1),
-						IRON(	Material.IRON, 	"bigsign_iron", 	"iron_block",		Items.IRON_INGOT,							0),
-						STONE(	Material.ROCK, 	"bigsign_stone", 	"stone",			Item.getItemFromBlock(Blocks.STONE),		0);
-		public Material material;
+						OAK(	"bigsign_oak", 		"log_oak",		Blocks.OAK_LOG.asItem(),		Blocks.OAK_FENCE),
+						SPRUCE(	"bigsign_spruce", 	"log_spruce",	Blocks.SPRUCE_LOG.asItem(),		Blocks.SPRUCE_FENCE),
+						BIRCH(	"bigsign_birch", 	"log_birch",	Blocks.BIRCH_LOG.asItem(),		Blocks.BIRCH_FENCE),
+						JUNGLE(	"bigsign_jungle", 	"log_jungle",	Blocks.JUNGLE_LOG.asItem(),		Blocks.JUNGLE_FENCE),
+						ACACIA(	"bigsign_acacia", 	"log_acacia",	Blocks.ACACIA_LOG.asItem(),		Blocks.ACACIA_FENCE),
+						BIGOAK(	"bigsign_big_oak", 	"log_big_oak",	Blocks.DARK_OAK_LOG.asItem(),	Blocks.DARK_OAK_FENCE),
+						IRON(	"bigsign_iron", 	"iron_block",	Items.IRON_INGOT,				Blocks.IRON_BLOCK),
+						STONE(	"bigsign_stone", 	"stone",		Blocks.STONE.asItem(),			Blocks.STONE);
 		public ResourceLocation texture;
 		public String textureMain;
 		public ResourceLocation resLocMain;
 		public Item baseItem;
-		public int metadata;
+		public Properties properties;
 
-		private BigPostType(Material material, String texture, String textureMain, Item baseItem, int metadata) {
-			this.material = material;
+		private BigPostType(String texture, String textureMain, Item baseItem, Block propertyProvider) {
 			this.texture = new ResourceLocation(Signpost.MODID + ":textures/blocks/"+texture+".png");
 			this.textureMain = textureMain;
 			this.resLocMain = new ResourceLocation("minecraft:textures/blocks/"+textureMain+".png");
 			this.baseItem = baseItem;
-			this.metadata = metadata;
+			this.properties = Properties.from(propertyProvider);
 		}
 	}
 	
@@ -74,40 +72,29 @@ public class BigPostPost extends SuperPostPost {
 
 	@Deprecated
 	public BigPostPost() {
-		super(Material.WOOD);
-		setCreativeTab(CreativeTabs.TRANSPORTATION);
-		this.setHarvestLevel("axe", 0);
-		this.setHardness(2);
-		this.setResistance(100000);
-		this.setLightOpacity(0);
-		this.setTranslationKey("SignpostBigPostOAK");
+		super(Properties.from(Blocks.OAK_FENCE));
 		this.setRegistryName(Signpost.MODID+":blockbigpostoak");
 	}
 
 	public BigPostPost(BigPostType type){
-		super(type.material);
+		super(type.properties);
 		this.type = type;
-		setCreativeTab(CreativeTabs.TRANSPORTATION);
-		switch(type){
-		case STONE:
-			this.setHarvestLevel("pickaxe", 0);
-			break;
-		case IRON:
-			this.setHarvestLevel("pickaxe", 1);
-			break;
-		default:
-			this.setHarvestLevel("axe", 0);
-			break;
-		}
-		this.setHardness(2);
-		this.setResistance(100000);
-		this.setLightOpacity(0);
-		this.setTranslationKey("SignpostBigPost"+type.name());
+//		switch(type){
+//		case STONE:
+//			this.setHarvestLevel("pickaxe", 0);
+//			break;
+//		case IRON:
+//			this.setHarvestLevel("pickaxe", 1);
+//			break;
+//		default:
+//			this.setHarvestLevel("axe", 0);
+//			break;
+//		}
 		this.setRegistryName(Signpost.MODID+":blockbigpost"+type.name().toLowerCase());
 	}
 	
 	@Override
-	public TileEntity createNewTileEntity(World p_149915_1_, int p_149915_2_) {
+	public TileEntity createNewTileEntity(IBlockReader reader) {
 		BigPostPostTile tile = new BigPostPostTile(type);
 		return tile;
 	}
@@ -150,7 +137,7 @@ public class BigPostPost extends SuperPostPost {
 
 	@Override
 	public void clickBrush(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z){
-		NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiPostBrushID, x, y, z), (EntityPlayerMP) player);
+		NetworkHandler.sendTo((EntityPlayerMP) player, new OpenGuiMessage(Signpost.GuiPostBrushID, x, y, z));
 	}
 
 	@Override
@@ -186,7 +173,7 @@ public class BigPostPost extends SuperPostPost {
 	public void rightClickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z){
 		BigHit hit = (BigHit)hitObj;
 		if(hit.target.equals(BigHitTarget.BASE)){
-			NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiPostRotationID, x, y, z), (EntityPlayerMP) player);
+			NetworkHandler.sendTo((EntityPlayerMP) player, new OpenGuiMessage(Signpost.GuiPostRotationID, x, y, z));
 		}
 	}
 	
@@ -213,7 +200,7 @@ public class BigPostPost extends SuperPostPost {
 				if (hit.target == BigHitTarget.BASE) {
 					tilebases.sign.overlay = now;
 				}
-				player.inventory.clearMatchingItems(now.item, 0, 1, null);
+				player.inventory.clearMatchingItems(itemStack -> itemStack.getItem().equals(now.item), 1);
 				return;
 			}
 		}
@@ -233,21 +220,21 @@ public class BigPostPost extends SuperPostPost {
 			BaseInfo destination = tile.getBases().sign.base;
 			if (destination != null) {
 				if(destination.teleportPosition==null){
-					NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.noTeleport"), (EntityPlayerMP) player);
+					NetworkHandler.sendTo((EntityPlayerMP) player, new ChatMessage("signpost.noTeleport"));
 				}else{
-					int stackSize = PostHandler.getStackSize(destination.teleportPosition, tile.toPos());
-					if(PostHandler.canPay(player, destination.teleportPosition.x, destination.teleportPosition.y, destination.teleportPosition.z, x, y, z)){
+					int stackSize = PostHandler.getStackSize(destination.teleportPosition.toBlockPos(), tile.getPos());
+					if(PostHandler.canPay(player, destination.teleportPosition.toBlockPos(), new BlockPos(x, y, z))){
 						PostHandler.teleportMe(destination, (EntityPlayerMP) player, stackSize);
 					}else{
 						String[] keyword = { "<itemName>", "<amount>" };
 						String[] replacement = { ClientConfigStorage.INSTANCE.getCost().getTranslationKey() + ".name",	"" + stackSize };
-						NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.payment", keyword, replacement), (EntityPlayerMP) player);
+						NetworkHandler.sendTo((EntityPlayerMP) player, new ChatMessage("signpost.payment", keyword, replacement));
 					}
 				}
 			}
 		} else {
-			NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBigPostID, x, y, z), (EntityPlayerMP) player);
-			NetworkHandler.netWrap.sendTo(new SendAllWaystoneNamesMessage(PostHandler.getAllWaystones().select(b -> b.getName())), (EntityPlayerMP) player);
+			NetworkHandler.sendTo((EntityPlayerMP) player, new OpenGuiMessage(Signpost.GuiBigPostID, x, y, z));
+			NetworkHandler.sendTo((EntityPlayerMP) player, new SendAllWaystoneNamesMessage(PostHandler.getAllWaystones().select(b -> b.getName())));
 		}
 	}
 
@@ -271,7 +258,6 @@ public class BigPostPost extends SuperPostPost {
 
 	@Override
 	public void shiftClickBare(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z) {
-		BigHit hit = (BigHit)hitObj;
 		shiftClick(hitObj, superTile, player, x, y, z);
 	}
 
@@ -279,14 +265,14 @@ public class BigPostPost extends SuperPostPost {
 	public void sendPostBasesToAll(SuperPostPostTile superTile) {
 		BigPostPostTile tile = (BigPostPostTile)superTile;
 		BigBaseInfo tilebases = tile.getBases();
-		NetworkHandler.netWrap.sendToAll(new SendBigPostBasesMessage(tile, tilebases));
+		NetworkHandler.sendToAll(new SendBigPostBasesMessage(tile, tilebases));
 	}
 
 	@Override
 	public void sendPostBasesToServer(SuperPostPostTile superTile) {
 		BigPostPostTile tile = (BigPostPostTile)superTile;
 		BigBaseInfo tilebases = tile.getBases();
-		NetworkHandler.netWrap.sendToServer(new SendBigPostBasesMessage(tile, tilebases));
+		NetworkHandler.sendToServer(new SendBigPostBasesMessage(tile, tilebases));
 	}
 	
 	@Override

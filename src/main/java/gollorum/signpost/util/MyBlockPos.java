@@ -32,6 +32,10 @@ public class MyBlockPos{
 		this((int)x, (int)y, (int)z, dim);
 	}
 
+	public MyBlockPos(World world, BlockPos pos){
+		this(pos, dim(world));
+	}
+
 	public MyBlockPos(BlockPos pos, DimensionType dim){
 		x = pos.getX();
 		y = pos.getY();

@@ -1,5 +1,11 @@
 package gollorum.signpost.commands;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
+import gollorum.signpost.commands.arguments.WaystoneArgument;
 import gollorum.signpost.management.ConfigHandler;
 import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.network.NetworkHandler;
@@ -7,22 +13,31 @@ import gollorum.signpost.network.messages.ChatMessage;
 import gollorum.signpost.util.BaseInfo;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.Commands;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.PlayerNotFoundException;
 import net.minecraft.command.WrongUsageException;
+import net.minecraft.command.arguments.EntityArgument;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 
-public class DiscoverWaystone extends CommandBase {
+public class DiscoverWaystone implements SignpostCommand {
 
 	@Override
-	public String getName() {
-		return "discoverwaystone";
+	public void register(CommandDispatcher<CommandSource> dispatcher) {
+		dispatcher.register(
+			Commands.literal("discoverwaystone")
+			.requires(source -> source.hasPermissionLevel(2))
+			.then(Commands.argument("name", new WaystoneArgument())
+				.then(Commands.argument("player", EntityArgument.singleEntity()))
+				.executes(this::execute)
+			).executes(this::execute)
+		);
 	}
 
-	@Override
-	public String getUsage(ICommandSender p_71518_1_) {
-		return "/discoverwaystone <name> [player]";
+	private int execute(CommandContext<CommandSource> ctx) {
+		
 	}
 
 	@Override

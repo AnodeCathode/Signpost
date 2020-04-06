@@ -12,7 +12,6 @@ import gollorum.signpost.util.BigBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
-import gollorum.signpost.util.collections.Lurchpaerchensauna;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
 
@@ -45,8 +44,8 @@ public class SendAllBigPostBasesMessage extends Message<SendAllBigPostBasesMessa
 	
 	public HashMap<MyBlockPos, BigStringInt> bigPosts = new HashMap<MyBlockPos, BigStringInt>();
 
-	public Lurchpaerchensauna<MyBlockPos, BigBaseInfo> toPostMap(){
-		Lurchpaerchensauna<MyBlockPos, BigBaseInfo> postMap = new Lurchpaerchensauna<MyBlockPos, BigBaseInfo>();
+	public HashMap<MyBlockPos, BigBaseInfo> toPostMap(){
+		HashMap<MyBlockPos, BigBaseInfo> postMap = new HashMap<MyBlockPos, BigBaseInfo>();
 		for(Entry<MyBlockPos, BigStringInt> now: bigPosts.entrySet()){
 			BaseInfo base = PostHandler.getForceWSbyName(now.getValue().string);
 			postMap.put(now.getKey(), new BigBaseInfo(new Sign(base,

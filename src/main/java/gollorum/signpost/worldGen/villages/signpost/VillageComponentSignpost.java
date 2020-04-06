@@ -5,6 +5,7 @@ import java.util.Random;
 
 import javax.annotation.Nullable;
 
+import gollorum.signpost.BlockHandler;
 import gollorum.signpost.Signpost;
 import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.code.MinecraftDependent;
@@ -66,8 +67,8 @@ public class VillageComponentSignpost extends Village{
 		}catch(Exception e) {
 			postPos = new BlockPos(x, this.boundingBox.maxY, z);
 		}
-		world.setBlockState(postPos, Signpost.proxy.blockHandler.post_oak.getDefaultState());
-		world.setBlockState(postPos.add(0, 1, 0), Signpost.proxy.blockHandler.post_oak.getDefaultState());
+		world.setBlockState(postPos, BlockHandler.post_oak.getDefaultState());
+		world.setBlockState(postPos.add(0, 1, 0), BlockHandler.post_oak.getDefaultState());
 		if (world.getBlockState(postPos.add(0, -1, 0)).getMaterial().isLiquid()) {
 			IBlockState block = this.getBiomeSpecificBlockState(Blocks.OAK_PLANKS.getDefaultState());
 			world.setBlockState(postPos.add(0, -1, 0), block);

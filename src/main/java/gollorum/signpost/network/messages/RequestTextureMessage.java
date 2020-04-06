@@ -14,11 +14,13 @@ public class RequestTextureMessage extends Message<RequestTextureMessage> {
 
 	public RequestTextureMessage(){}
 
-	public RequestTextureMessage(int x, int y, int z, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
+	public RequestTextureMessage(int x, int y, int z, EnumHand hand, float hitX, float hitY, float hitZ){
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.hand = hand;
+		
+		//TODO: Whatever
 		this.facing = facing;
 		this.hitX = hitX;
 		this.hitY = hitY;
