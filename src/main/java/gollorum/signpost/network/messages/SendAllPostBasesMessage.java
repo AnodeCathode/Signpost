@@ -1,24 +1,22 @@
 package gollorum.signpost.network.messages;
 
-import java.util.HashMap;
-import java.util.Map.Entry;
-
 import gollorum.signpost.blocks.tiles.PostPostTile;
 import gollorum.signpost.blocks.tiles.SuperPostPostTile;
 import gollorum.signpost.management.PostHandler;
-import gollorum.signpost.network.NetworkUtil;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.DoubleBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
-import gollorum.signpost.util.collections.Lurchpaerchensauna;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.network.ByteBufUtils;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class SendAllPostBasesMessage extends Message<SendAllPostBasesMessage> {
+import java.util.HashMap;
+import java.util.Map.Entry;
+
+public class SendAllPostBasesMessage implements IMessage{
 
 	public class DoubleStringInt{
 		public String string1;
@@ -43,14 +41,16 @@ public class SendAllPostBasesMessage extends Message<SendAllPostBasesMessage> {
 		
 		public byte paintObjectIndex;
 		
-		public DoubleStringInt(String string1, String string2, 
-							   int int1, int int2, 
-							   boolean bool1, boolean bool2, 
-							   OverlayType overlay1, OverlayType overlay2, 
-							   boolean bool3, boolean bool4,
-							   String paint1, String paint2,
-							   String postPaint,
-							   byte paintObjectIndex) {
+		public DoubleStringInt(
+			String string1, String string2,
+			int int1, int int2,
+			boolean bool1, boolean bool2,
+			OverlayType overlay1, OverlayType overlay2,
+			boolean bool3, boolean bool4,
+			String paint1, String paint2,
+			String postPaint,
+			byte paintObjectIndex
+		) {
 			this.string1 = string1;
 			this.string2 = string2;
 			this.int1 = int1;
@@ -68,34 +68,38 @@ public class SendAllPostBasesMessage extends Message<SendAllPostBasesMessage> {
 		}
 	}
 	
-	public HashMap<MyBlockPos, DoubleStringInt> posts = new HashMap<MyBlockPos, DoubleStringInt>();
+	public HashMap<MyBlockPos, DoubleStringInt> posts = new HashMap<>();
 
-	public Lurchpaerchensauna<MyBlockPos, DoubleBaseInfo> toPostMap(){
-		Lurchpaerchensauna<MyBlockPos, DoubleBaseInfo> postMap = new Lurchpaerchensauna<MyBlockPos, DoubleBaseInfo>();
+	public HashMap<MyBlockPos, DoubleBaseInfo> toPostMap(){
+		HashMap<MyBlockPos, DoubleBaseInfo> postMap = new HashMap<>();
 		for(Entry<MyBlockPos, DoubleStringInt> now: posts.entrySet()){
 			BaseInfo base1 = PostHandler.getForceWSbyName(now.getValue().string1);
 			BaseInfo base2 = PostHandler.getForceWSbyName(now.getValue().string2);
 			ResourceLocation paint1 = SuperPostPostTile.stringToLoc(now.getValue().paint1);
 			ResourceLocation paint2 = SuperPostPostTile.stringToLoc(now.getValue().paint2);
 			ResourceLocation postPaint = SuperPostPostTile.stringToLoc(now.getValue().postPaint);
-			DoubleBaseInfo neu = postMap.put(now.getKey(), new DoubleBaseInfo(
-				new Sign(
-					base1,
-					now.getValue().int1,
-					now.getValue().bool1,
-					now.getValue().overlay1,
-					now.getValue().bool3,
-					paint1
-				 ),
-				 new Sign(
-					base2,
-					now.getValue().int2,
-					now.getValue().bool2,
-					now.getValue().overlay2,
-					now.getValue().bool4,
-					paint2
-				 ),
-				 postPaint));
+			DoubleBaseInfo neu = postMap.put(
+				now.getKey(),
+				new DoubleBaseInfo(
+					new Sign(
+						base1,
+						now.getValue().int1,
+						now.getValue().bool1,
+						now.getValue().overlay1,
+						now.getValue().bool3,
+						paint1
+					),
+					new Sign(
+						base2,
+						now.getValue().int2,
+						now.getValue().bool2,
+						now.getValue().overlay2,
+						now.getValue().bool4,
+						paint2
+					),
+					postPaint
+				)
+			);
 		}
 		return postMap;
 	}
@@ -103,23 +107,23 @@ public class SendAllPostBasesMessage extends Message<SendAllPostBasesMessage> {
 	public SendAllPostBasesMessage(){}
 
 	@Override
-	public void encode(PacketBuffer buf) {
+	public void toBytes(ByteBuf buf) {
 		buf.writeInt(PostHandler.getPosts().size());
 		for(Entry<MyBlockPos, DoubleBaseInfo> now: PostHandler.getPosts().entrySet()){
-			now.getKey().encode(buf);
-			buf.writeString(""+now.getValue().sign1.base);
-			buf.writeString(""+now.getValue().sign2.base);
+			now.getKey().toBytes(buf);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign1.base);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign2.base);
 			buf.writeInt(now.getValue().sign1.rotation);
 			buf.writeInt(now.getValue().sign2.rotation);
 			buf.writeBoolean(now.getValue().sign1.flip);
 			buf.writeBoolean(now.getValue().sign2.flip);
-			buf.writeString(""+now.getValue().sign1.overlay);
-			buf.writeString(""+now.getValue().sign2.overlay);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign1.overlay);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign2.overlay);
 			buf.writeBoolean(now.getValue().sign1.point);
 			buf.writeBoolean(now.getValue().sign2.point);
-			buf.writeString(SuperPostPostTile.locToString(now.getValue().sign1.paint));
-			buf.writeString(SuperPostPostTile.locToString(now.getValue().sign2.paint));
-			buf.writeString(SuperPostPostTile.locToString(now.getValue().postPaint));
+			ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(now.getValue().sign1.paint));
+			ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(now.getValue().sign2.paint));
+			ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(now.getValue().postPaint));
 			PostPostTile tile = (PostPostTile) now.getKey().getTile();
 			if(tile!=null){
 				if(now.getValue().equals(tile.getPaintObject())){
@@ -138,22 +142,24 @@ public class SendAllPostBasesMessage extends Message<SendAllPostBasesMessage> {
 	}
 	
 	@Override
-	public void decode(PacketBuffer buf) {
+	public void fromBytes(ByteBuf buf) {
 		int c = buf.readInt();
 		for(int i = 0; i<c; i++){
-			posts.put(MyBlockPos.decode(buf), 
+			posts.put(
+				MyBlockPos.fromBytes(buf),
 				new DoubleStringInt(
-					buf.readString(NetworkUtil.MAX_STRING_LENGTH), 
-					buf.readString(NetworkUtil.MAX_STRING_LENGTH),
+					ByteBufUtils.readUTF8String(buf),
+					ByteBufUtils.readUTF8String(buf),
 					buf.readInt(), buf.readInt(),
 					buf.readBoolean(), buf.readBoolean(),
-					OverlayType.get(buf.readString(NetworkUtil.MAX_STRING_LENGTH)),
-					OverlayType.get(buf.readString(NetworkUtil.MAX_STRING_LENGTH)),
+					OverlayType.get(ByteBufUtils.readUTF8String(buf)),
+					OverlayType.get(ByteBufUtils.readUTF8String(buf)),
 					buf.readBoolean(), buf.readBoolean(),
-					buf.readString(NetworkUtil.MAX_STRING_LENGTH), 
-					buf.readString(NetworkUtil.MAX_STRING_LENGTH),
-					buf.readString(NetworkUtil.MAX_STRING_LENGTH),
-					buf.readByte()));
+					ByteBufUtils.readUTF8String(buf), ByteBufUtils.readUTF8String(buf),
+					ByteBufUtils.readUTF8String(buf),
+					buf.readByte()
+				)
+			);
 		}
 	}
 

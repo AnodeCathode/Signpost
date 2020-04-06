@@ -1,16 +1,16 @@
 package gollorum.signpost.network.handlers;
 
-import java.util.function.Supplier;
-
 import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.network.messages.InitPlayerResponseMessage;
-import net.minecraftforge.fml.network.NetworkEvent.Context;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
+import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
-public class InitPlayerResponseHandler extends Handler<InitPlayerResponseHandler, InitPlayerResponseMessage>{
+public class InitPlayerResponseHandler implements IMessageHandler<InitPlayerResponseMessage, IMessage>{
 
 	@Override
-	public void handle(InitPlayerResponseMessage message, Supplier<Context> contextSupplier) {
+	public IMessage onMessage(InitPlayerResponseMessage message, MessageContext ctx) {
 		if(!message.deactivateTeleportation){
 			PostHandler.setNativeWaystones(message.allWaystones);
 		}
@@ -19,6 +19,7 @@ public class InitPlayerResponseHandler extends Handler<InitPlayerResponseHandler
 		ClientConfigStorage.INSTANCE.setMaxDist(message.maxDist);
 		ClientConfigStorage.INSTANCE.setPaymentItem(message.paymentItem);
 		ClientConfigStorage.INSTANCE.setCostMult(message.costMult);
+		ClientConfigStorage.INSTANCE.setCostBase(message.costBase);
 		ClientConfigStorage.INSTANCE.setSignRec(message.signRec);
 		ClientConfigStorage.INSTANCE.setWaysRec(message.waysRec);
 		ClientConfigStorage.INSTANCE.setSecurityLevelWaystone(message.securityLevelWaystone);
@@ -28,7 +29,10 @@ public class InitPlayerResponseHandler extends Handler<InitPlayerResponseHandler
 	    ClientConfigStorage.INSTANCE.setVillageSignpostsWeight(message.villageSignpostsWeight); 
 	    ClientConfigStorage.INSTANCE.setVillageWaystonesWeight(message.villageWaystonesWeight);
 	    ClientConfigStorage.INSTANCE.setOnlyVillageTargets(message.onlyVillageTargets);
+		ClientConfigStorage.INSTANCE.setAllowedCraftingModels(message.allowedCraftingModels);
+		ClientConfigStorage.INSTANCE.setAllowedVillageModels(message.allowedVillageModels);
 		ClientConfigStorage.INSTANCE.postInit();
+		return null;
 	}
 
 }

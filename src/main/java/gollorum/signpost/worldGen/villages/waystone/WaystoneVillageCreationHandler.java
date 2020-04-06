@@ -6,9 +6,9 @@ import java.util.Random;
 import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.worldGen.villages.NameLibrary;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.world.gen.feature.structure.VillagePieces.PieceWeight;
-import net.minecraft.world.gen.feature.structure.VillagePieces.Start;
-import net.minecraft.world.gen.feature.structure.VillagePieces.Village;
+import net.minecraft.world.gen.structure.StructureVillagePieces.PieceWeight;
+import net.minecraft.world.gen.structure.StructureVillagePieces.Start;
+import net.minecraft.world.gen.structure.StructureVillagePieces.Village;
 import net.minecraftforge.fml.common.registry.VillagerRegistry.IVillageCreationHandler;
 
 public class WaystoneVillageCreationHandler implements IVillageCreationHandler{

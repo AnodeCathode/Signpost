@@ -1,21 +1,22 @@
 package gollorum.signpost.network.messages;
 
-import java.util.HashMap;
-import java.util.Map.Entry;
-
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.blocks.tiles.SuperPostPostTile;
 import gollorum.signpost.management.PostHandler;
-import gollorum.signpost.network.NetworkUtil;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.BigBaseInfo;
 import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
-import net.minecraft.network.PacketBuffer;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.common.network.ByteBufUtils;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class SendAllBigPostBasesMessage extends Message<SendAllBigPostBasesMessage> {
+import java.util.HashMap;
+import java.util.Map.Entry;
+
+public class SendAllBigPostBasesMessage implements IMessage{
 
 	public class BigStringInt{
 		public String string;
@@ -48,14 +49,15 @@ public class SendAllBigPostBasesMessage extends Message<SendAllBigPostBasesMessa
 		HashMap<MyBlockPos, BigBaseInfo> postMap = new HashMap<MyBlockPos, BigBaseInfo>();
 		for(Entry<MyBlockPos, BigStringInt> now: bigPosts.entrySet()){
 			BaseInfo base = PostHandler.getForceWSbyName(now.getValue().string);
-			postMap.put(now.getKey(), new BigBaseInfo(new Sign(base,
-															   now.getValue().datInt,
-															   now.getValue().bool,
-															   now.getValue().overlay,
-															   now.getValue().bool2,
-															   now.getValue().paint),
-														now.getValue().strings,
-														now.getValue().postPaint));
+			postMap.put(now.getKey(), new BigBaseInfo(new Sign(
+				base,
+				now.getValue().datInt,
+				now.getValue().bool,
+				now.getValue().overlay,
+				now.getValue().bool2,
+				now.getValue().paint),
+				now.getValue().strings,
+				now.getValue().postPaint));
 		}
 		return postMap;
 	}
@@ -63,58 +65,60 @@ public class SendAllBigPostBasesMessage extends Message<SendAllBigPostBasesMessa
 	public SendAllBigPostBasesMessage(){}
 
 	@Override
-	public void encode(PacketBuffer buffer) {
-		buffer.writeInt(PostHandler.getBigPosts().size());
+	public void toBytes(ByteBuf buf) {
+		buf.writeInt(PostHandler.getBigPosts().size());
 		for(Entry<MyBlockPos, BigBaseInfo> now: PostHandler.getBigPosts().entrySet()){
-			now.getKey().encode(buffer);
-			buffer.writeString(""+now.getValue().sign.base);
-			buffer.writeInt(now.getValue().sign.rotation);
-			buffer.writeBoolean(now.getValue().sign.flip);
-			buffer.writeString(""+now.getValue().sign.overlay);
-			buffer.writeBoolean(now.getValue().sign.point);
-			buffer.writeInt(now.getValue().description.length);
+			now.getKey().toBytes(buf);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign.base);
+			buf.writeInt(now.getValue().sign.rotation);
+			buf.writeBoolean(now.getValue().sign.flip);
+			ByteBufUtils.writeUTF8String(buf, ""+now.getValue().sign.overlay);
+			buf.writeBoolean(now.getValue().sign.point);
+			buf.writeInt(now.getValue().description.length);
 			for(String now2: now.getValue().description){
-				buffer.writeString(now2);
+				ByteBufUtils.writeUTF8String(buf, now2);
 			}
-			buffer.writeString(SuperPostPostTile.locToString(now.getValue().sign.paint));
-			buffer.writeString(SuperPostPostTile.locToString(now.getValue().postPaint));
+			ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(now.getValue().sign.paint));
+			ByteBufUtils.writeUTF8String(buf, SuperPostPostTile.locToString(now.getValue().postPaint));
 			BigPostPostTile tile = (BigPostPostTile) now.getKey().getTile();
 			if(tile!=null){
 				if(now.getValue().equals(tile.getPaintObject())){
-					buffer.writeByte(1);
+					buf.writeByte(1);
 				}else if(now.getValue().sign.equals(tile.getPaintObject())){
-					buffer.writeByte(2);
+					buf.writeByte(2);
 				}else{
-					buffer.writeByte(0);
+					buf.writeByte(0);
 				}
 			}else{
-				buffer.writeByte(0);
+				buf.writeByte(0);
 			}
 		}
 	}
 	
 	@Override
-	public void decode(PacketBuffer buffer) {
-		int c = buffer.readInt();
+	public void fromBytes(ByteBuf buf) {
+		int c = buf.readInt();
 		for(int i = 0; i<c; i++){
 			bigPosts.put(
-				MyBlockPos.decode(buffer), 
-				new BigStringInt(buffer.readString(NetworkUtil.MAX_STRING_LENGTH),
-					buffer.readInt(),
-					buffer.readBoolean(),
-					OverlayType.get(buffer.readString(NetworkUtil.MAX_STRING_LENGTH)),
-					buffer.readBoolean(),
-					readDescription(buffer),
-					SuperPostPostTile.stringToLoc(buffer.readString(NetworkUtil.MAX_STRING_LENGTH)),
-					SuperPostPostTile.stringToLoc(buffer.readString(NetworkUtil.MAX_STRING_LENGTH)),
-					buffer.readByte()));
+				MyBlockPos.fromBytes(buf),
+				new BigStringInt(ByteBufUtils.readUTF8String(buf),
+					buf.readInt(),
+					buf.readBoolean(),
+					OverlayType.get(ByteBufUtils.readUTF8String(buf)),
+					buf.readBoolean(),
+					readDescription(buf),
+					SuperPostPostTile.stringToLoc(ByteBufUtils.readUTF8String(buf)),
+					SuperPostPostTile.stringToLoc(ByteBufUtils.readUTF8String(buf)),
+					buf.readByte()
+				)
+			);
 		}
 	}
 
-	private String[] readDescription(PacketBuffer buffer){
-		String[] ret = new String[buffer.readInt()];
+	private String[] readDescription(ByteBuf buf){
+		String[] ret = new String[buf.readInt()];
 		for(int i=0; i<ret.length; i++){
-			ret[i] = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+			ret[i] = ByteBufUtils.readUTF8String(buf);
 		}
 		return ret;
 	}

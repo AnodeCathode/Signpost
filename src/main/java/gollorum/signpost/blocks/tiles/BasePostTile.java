@@ -1,5 +1,6 @@
 package gollorum.signpost.blocks.tiles;
 
+import gollorum.signpost.SPEventHandler;
 import gollorum.signpost.blocks.WaystoneContainer;
 import gollorum.signpost.event.UpdateWaystoneEvent;
 import gollorum.signpost.management.PostHandler;
@@ -9,44 +10,51 @@ import gollorum.signpost.network.messages.BaseUpdateServerMessage;
 import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.MyBlockPos;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.world.dimension.DimensionType;
 import net.minecraftforge.common.MinecraftForge;
 
 public class BasePostTile extends TileEntity implements WaystoneContainer {
 
 	public boolean isCanceled = false;
-	
-    private static final TileEntityType<BasePostTile> TYPE = TileEntityType.register("baseposttile", TileEntityType.Builder.create(BasePostTile::new));
 
-	public BasePostTile() { super(TYPE); }
+	public BasePostTile() {}
+	
+	public BasePostTile setup(){
+		SPEventHandler.scheduleTask(() -> {
+			if(isCanceled){
+				return true;
+			}
+			if(getWorld()==null){
+				return false;
+			}
+			init();
+			return true;
+		});
+		return this;
+	}
 	
 	public BaseInfo getBaseInfo(){
 		return PostHandler.getNativeWaystones().getByPos(toPos());
 	}
 
+	public void init(){}
+
 	public MyBlockPos toPos(){
-		if(getWorld()==null||getWorld().isRemote){
-			return new MyBlockPos(pos, dim());
-		}else{
-			return new MyBlockPos(pos, dim());
-		}
+		return new MyBlockPos(pos.getX(), pos.getY(), pos.getZ(), dim());
 	}
 
-	public DimensionType dim(){
-		if(getWorld() == null){
-			return null;
+	public int dim(){
+		if(getWorld()==null||getWorld().provider==null){
+			return Integer.MIN_VALUE;
 		}else
-			return getWorld().getDimension().getType();
+			return getWorld().provider.getDimension();
 	}
 	
 	public void onBlockDestroy(MyBlockPos pos) {
 		isCanceled = true;
-//		BaseInfo base = PostHandler.allWaystones.getByPos(pos);
 		BaseInfo base = getBaseInfo();
 		if(PostHandler.getNativeWaystones().remove(base)){
 			MinecraftForge.EVENT_BUS.post(new UpdateWaystoneEvent(UpdateWaystoneEvent.WaystoneEventType.DESTROYED, getWorld(), this.pos.getX(), this.pos.getY(), this.pos.getZ(), base==null?"":base.getName()));
-			NetworkHandler.sendToAll(new BaseUpdateClientMessage());
+			NetworkHandler.netWrap.sendToAll(new BaseUpdateClientMessage());
 		}
 	}
 
@@ -54,7 +62,7 @@ public class BasePostTile extends TileEntity implements WaystoneContainer {
 	public void setName(String name) {
 		BaseInfo ws = getBaseInfo();
 		ws.setName(name);
-		NetworkHandler.sendToServer(new BaseUpdateServerMessage(ws, false));
+		NetworkHandler.netWrap.sendToServer(new BaseUpdateServerMessage(ws, false));
 	}
 
 	@Override

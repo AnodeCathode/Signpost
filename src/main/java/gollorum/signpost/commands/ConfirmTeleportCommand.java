@@ -1,34 +1,40 @@
 package gollorum.signpost.commands;
 
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-
 import gollorum.signpost.SPEventHandler;
 import gollorum.signpost.management.PostHandler;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
+import net.minecraft.command.CommandBase;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.MinecraftServer;
 
-public class ConfirmTeleportCommand implements SignpostCommand {
+public class ConfirmTeleportCommand extends CommandBase {
 
 	@Override
-	public void register(CommandDispatcher<CommandSource> dispatcher) {
-		dispatcher.register(
-			Commands.literal("signpostconfirm")
-			.requires(source -> {
-				try {
-					return source.asPlayer() != null;
-				} catch (CommandSyntaxException e) {
-					return false;
-				}
-			})
-			.executes(ctx -> execute(ctx.getSource().asPlayer()))
-		);
+	public String getName() {
+		return "signpostconfirm";
 	}
 
-	public int execute(final EntityPlayerMP sender) {
-		SPEventHandler.scheduleTask(() -> PostHandler.confirm((EntityPlayerMP) sender), 0);
-		return 1;
+	@Override
+	public String getUsage(ICommandSender p_71518_1_) {
+		return "/signpostconfirm";
 	}
+
+	@Override
+	public void execute(MinecraftServer server, final ICommandSender sender, String[] args) {
+		if(sender instanceof EntityPlayerMP){
+			SPEventHandler.scheduleTask(new Runnable(){
+				@Override
+				public void run() {
+					PostHandler.confirm((EntityPlayerMP) sender);
+				}
+			}, 0);
+		}
+	}
+
+	@Override
+    public boolean checkPermission(MinecraftServer server, ICommandSender sender){
+    	return sender instanceof EntityPlayer;
+    }
 
 }

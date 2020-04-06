@@ -1,9 +1,10 @@
 package gollorum.signpost.network.messages;
 
-import gollorum.signpost.network.NetworkUtil;
-import net.minecraft.network.PacketBuffer;
+import io.netty.buffer.ByteBuf;
+import net.minecraftforge.fml.common.network.ByteBufUtils;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class SendDiscoveredToServerMessage extends Message<SendDiscoveredToServerMessage> {
+public class SendDiscoveredToServerMessage implements IMessage {
 
 	public String waystone;
 	
@@ -14,13 +15,13 @@ public class SendDiscoveredToServerMessage extends Message<SendDiscoveredToServe
 	}
 	
 	@Override
-	public void decode(PacketBuffer buf) {
-		waystone = buf.readString(NetworkUtil.MAX_STRING_LENGTH);
+	public void fromBytes(ByteBuf buf) {
+		waystone = ByteBufUtils.readUTF8String(buf);
 	}
 
 	@Override
-	public void encode(PacketBuffer buf) {
-		buf.writeString(waystone);
+	public void toBytes(ByteBuf buf) {
+		ByteBufUtils.writeUTF8String(buf, waystone);
 	}
 
 }

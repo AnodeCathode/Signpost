@@ -1,9 +1,10 @@
 package gollorum.signpost.network.messages;
 
 import gollorum.signpost.util.BaseInfo;
-import net.minecraft.network.PacketBuffer;
+import io.netty.buffer.ByteBuf;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class BaseUpdateServerMessage extends Message<BaseUpdateServerMessage> {
+public class BaseUpdateServerMessage implements IMessage{
 
 	public BaseInfo wayStone;
 	public boolean destroyed;
@@ -16,16 +17,15 @@ public class BaseUpdateServerMessage extends Message<BaseUpdateServerMessage> {
 	}
 	
 	@Override
-	protected void encode(PacketBuffer buffer) {
-		wayStone.encode(buffer);
-		buffer.writeBoolean(destroyed);
-		
+	public void fromBytes(ByteBuf buf) {
+		wayStone = BaseInfo.fromBytes(buf);
+		destroyed = buf.readBoolean();
 	}
 
 	@Override
-	protected void decode(PacketBuffer buffer) {
-		wayStone = BaseInfo.decode(buffer);
-		destroyed = buffer.readBoolean();
+	public void toBytes(ByteBuf buf) {
+		wayStone.toBytes(buf);
+		buf.writeBoolean(destroyed);
 	}
 
 }

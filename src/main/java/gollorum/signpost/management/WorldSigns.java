@@ -4,7 +4,6 @@ import gollorum.signpost.util.BaseInfo;
 import gollorum.signpost.util.StonedHashSet;
 import gollorum.signpost.worldGen.villages.VillageLibrary;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
@@ -22,7 +21,7 @@ public class WorldSigns extends WorldSavedData{
 		super(key);
 	}
 
-	public static WorldSigns worldSigns(IWorld world){
+	public static WorldSigns worldSigns(World world){
 		MapStorage storage = world.getPerWorldStorage();
 		WorldSigns ret = (WorldSigns) storage.getOrLoadData(WorldSigns.class, key);
 		if(ret == null){

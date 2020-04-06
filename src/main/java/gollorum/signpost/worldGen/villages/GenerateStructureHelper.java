@@ -3,7 +3,7 @@ package gollorum.signpost.worldGen.villages;
 import gollorum.signpost.util.MyBlockPos;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IWorld;
+import net.minecraft.world.World;
 
 public class GenerateStructureHelper {
 
@@ -15,10 +15,10 @@ public class GenerateStructureHelper {
 	
 	private GenerateStructureHelper(){}
 	
-	public BlockPos getTopSolidOrLiquidBlock(IWorld world, BlockPos pos){
-		BlockPos ret = pos;
+	public BlockPos getTopSolidOrLiquidBlock(World world, BlockPos pos){
+		BlockPos ret = world.getTopSolidOrLiquidBlock(pos);
 		IBlockState state = world.getBlockState(ret);
-		while(state.getMaterial().isLiquid() || state.getMaterial().isSolid()){
+		while(state.getMaterial().isLiquid()){
 			ret = ret.add(0, 1, 0);
 			state = world.getBlockState(ret);
 		}
@@ -27,7 +27,7 @@ public class GenerateStructureHelper {
     
 	public MyBlockPos getTopSolidOrLiquidBlock(MyBlockPos pos) {
 		BlockPos blockPos = getTopSolidOrLiquidBlock(pos.getWorld(), pos.toBlockPos());
-		return pos.fromNewPos(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+		return new MyBlockPos(blockPos, pos.dim);
 	}
 
 }

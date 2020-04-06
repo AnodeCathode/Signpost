@@ -4,7 +4,6 @@ import gollorum.signpost.Signpost;
 import gollorum.signpost.network.handlers.BaseUpdateClientHandler;
 import gollorum.signpost.network.handlers.BaseUpdateServerHandler;
 import gollorum.signpost.network.handlers.ChatHandler;
-import gollorum.signpost.network.handlers.Handler;
 import gollorum.signpost.network.handlers.InitPlayerResponseHandler;
 import gollorum.signpost.network.handlers.OpenGuiHandler;
 import gollorum.signpost.network.handlers.RequestTextureHandler;
@@ -20,7 +19,6 @@ import gollorum.signpost.network.messages.BaseUpdateClientMessage;
 import gollorum.signpost.network.messages.BaseUpdateServerMessage;
 import gollorum.signpost.network.messages.ChatMessage;
 import gollorum.signpost.network.messages.InitPlayerResponseMessage;
-import gollorum.signpost.network.messages.Message;
 import gollorum.signpost.network.messages.OpenGuiMessage;
 import gollorum.signpost.network.messages.RequestTextureMessage;
 import gollorum.signpost.network.messages.SendAllBigPostBasesMessage;
@@ -31,55 +29,32 @@ import gollorum.signpost.network.messages.SendDiscoveredToServerMessage;
 import gollorum.signpost.network.messages.SendPostBasesMessage;
 import gollorum.signpost.network.messages.TeleportMeMessage;
 import gollorum.signpost.network.messages.TeleportRequestMessage;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.PacketDistributor;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
+import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
+import net.minecraftforge.fml.relauncher.Side;
 
 public class NetworkHandler {
 
-	private static final String PROTOCOL_VERSION = Integer.toString(1);
-	public static final SimpleChannel HANDLER = NetworkRegistry.ChannelBuilder
-			.named(new ResourceLocation(Signpost.MODID, "main_channel"))
-			.clientAcceptedVersions(PROTOCOL_VERSION::equals)
-			.serverAcceptedVersions(PROTOCOL_VERSION::equals)
-			.networkProtocolVersion(() -> PROTOCOL_VERSION)
-			.simpleChannel();
-	
-	private static int i = 0;
-	
+	public static final SimpleNetworkWrapper netWrap = NetworkRegistry.INSTANCE.newSimpleChannel(Signpost.MODID);
+
 	public static void register(){
-		register(BaseUpdateServerHandler.class, BaseUpdateServerMessage.class);
-		register(BaseUpdateClientHandler.class, BaseUpdateClientMessage.class);
-		register(SendDiscoveredToServerHandler.class, SendDiscoveredToServerMessage.class);
-		register(InitPlayerResponseHandler.class, InitPlayerResponseMessage.class);
-		register(SendPostBasesHandler.class, SendPostBasesMessage.class);
-		register(SendAllPostBasesHandler.class, SendAllPostBasesMessage.class);
-		register(SendBigPostBasesHandler.class, SendBigPostBasesMessage.class);
-		register(SendAllBigPostBasesHandler.class, SendAllBigPostBasesMessage.class);
-		register(TeleportMeHandler.class, TeleportMeMessage.class);
-		register(ChatHandler.class, ChatMessage.class);
-		register(OpenGuiHandler.class, OpenGuiMessage.class);
-		register(TeleportRequestHandler.class, TeleportRequestMessage.class);
-		register(RequestTextureHandler.class, RequestTextureMessage.class);
-		register(SendAllWaystoneNamesHandler.class, SendAllWaystoneNamesMessage.class);
+		netWrap.registerMessage(BaseUpdateServerHandler.class, BaseUpdateServerMessage.class, 0, Side.SERVER);
+		netWrap.registerMessage(BaseUpdateClientHandler.class, BaseUpdateClientMessage.class, 1, Side.CLIENT);
+		netWrap.registerMessage(SendDiscoveredToServerHandler.class, SendDiscoveredToServerMessage.class, 2, Side.SERVER);
+		netWrap.registerMessage(InitPlayerResponseHandler.class, InitPlayerResponseMessage.class, 3, Side.CLIENT);
+		netWrap.registerMessage(SendPostBasesHandler.class, SendPostBasesMessage.class, 4, Side.CLIENT);
+		netWrap.registerMessage(SendPostBasesHandler.class, SendPostBasesMessage.class, 5, Side.SERVER);
+		netWrap.registerMessage(SendAllPostBasesHandler.class, SendAllPostBasesMessage.class, 6, Side.CLIENT);
+		netWrap.registerMessage(SendBigPostBasesHandler.class, SendBigPostBasesMessage.class, 7, Side.CLIENT);
+		netWrap.registerMessage(SendBigPostBasesHandler.class, SendBigPostBasesMessage.class, 8, Side.SERVER);
+		netWrap.registerMessage(SendAllBigPostBasesHandler.class, SendAllBigPostBasesMessage.class, 9, Side.CLIENT);
+		netWrap.registerMessage(TeleportMeHandler.class, TeleportMeMessage.class, 10, Side.SERVER);
+		netWrap.registerMessage(ChatHandler.class, ChatMessage.class, 11, Side.CLIENT);
+		netWrap.registerMessage(OpenGuiHandler.class, OpenGuiMessage.class, 12, Side.CLIENT);
+		netWrap.registerMessage(TeleportRequestHandler.class, TeleportRequestMessage.class, 13, Side.CLIENT);
+		netWrap.registerMessage(TeleportRequestHandler.class, TeleportRequestMessage.class, 14, Side.SERVER);
+		netWrap.registerMessage(RequestTextureHandler.class, RequestTextureMessage.class, 15, Side.CLIENT);
+		netWrap.registerMessage(SendAllWaystoneNamesHandler.class, SendAllWaystoneNamesMessage.class, 16, Side.CLIENT);
 	}
 	
-	private static <M extends Message<M>, H extends Handler<H, M>> void register(Class<H> handler, Class<M> message) {
-		HANDLER.registerMessage(i++, message, Message.encode(), Message.decode(message), Handler.handle(handler));
-	}
-	
-	public static <T extends Message<T>> void sendToAll(T message) {
-		HANDLER.send(PacketDistributor.ALL.noArg(), message);
-	}
-	
-	public static <T extends Message<T>> void sendTo(EntityPlayerMP player, T message) {
-		HANDLER.send(PacketDistributor.PLAYER.with(() -> player), message);
-	}
-	
-	public static <T extends Message<T>> void sendToServer(T message) {
-		HANDLER.send(PacketDistributor.SERVER.noArg(), message);
-	}
 }

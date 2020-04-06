@@ -1,16 +1,11 @@
 package gollorum.signpost.worldGen.villages.waystone;
 
-import java.util.List;
-import java.util.Random;
-
-import javax.annotation.Nullable;
-
-import gollorum.signpost.BlockHandler;
 import gollorum.signpost.SPEventHandler;
+import gollorum.signpost.Signpost;
+import gollorum.signpost.blocks.BaseModelPost;
 import gollorum.signpost.blocks.BasePost;
 import gollorum.signpost.blocks.WaystoneContainer;
 import gollorum.signpost.management.PostHandler;
-import gollorum.signpost.util.BoolRun;
 import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.worldGen.villages.GenerateStructureHelper;
 import gollorum.signpost.worldGen.villages.NameLibrary;
@@ -20,24 +15,26 @@ import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
-import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.feature.structure.StructurePiece;
-import net.minecraft.world.gen.feature.structure.VillagePieces;
+import net.minecraft.world.gen.structure.StructureBoundingBox;
+import net.minecraft.world.gen.structure.StructureComponent;
+import net.minecraft.world.gen.structure.StructureVillagePieces;
 
-public class VillageComponentWaystone extends VillagePieces.Village{
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Random;
+
+public class VillageComponentWaystone extends StructureVillagePieces.Village{
 	
 	private boolean built = false;
-	private VillagePieces.Start start;
+	private StructureVillagePieces.Start start;
 	private EnumFacing facing;
 	
 	public VillageComponentWaystone(){
 		super();
 	}
 	
-	public VillageComponentWaystone(VillagePieces.Start start, int type, MutableBoundingBox boundingBox, EnumFacing facing){
+	public VillageComponentWaystone(StructureVillagePieces.Start start, int type, StructureBoundingBox boundingBox, EnumFacing facing){
 		super(start, type);
 		this.boundingBox = boundingBox;
 		this.start = start;
@@ -45,8 +42,8 @@ public class VillageComponentWaystone extends VillagePieces.Village{
 	}
 	
 	@Nullable
-	public static VillagePieces.Village buildComponent(VillagePieces.Start startPiece, List<StructurePiece> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
-		MutableBoundingBox boundingBox = MutableBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 1, 1, 1, facing);
+	public static StructureVillagePieces.Village buildComponent(StructureVillagePieces.Start startPiece, List<StructureComponent> pieces, Random random, int x, int y, int z, EnumFacing facing, int type) {
+		StructureBoundingBox boundingBox = StructureBoundingBox.getComponentToAddBoundingBox(x, y, z, 0, 0, 0, 1, 1, 1, facing);
 		if (canVillageGoDeeper(boundingBox) && findIntersecting(pieces, boundingBox) == null) {
 			return new VillageComponentWaystone(startPiece, type, boundingBox, facing.getOpposite());
 		}
@@ -54,7 +51,7 @@ public class VillageComponentWaystone extends VillagePieces.Village{
 	}
 
 	@Override
-	public boolean addComponentParts(IWorld iworld, Random random, MutableBoundingBox boundingBox, ChunkPos chunkPos) {
+	public boolean addComponentParts(final World world, Random random, StructureBoundingBox boundingBox) {
 		if(built || start==null ||! NameLibrary.getInstance().namesLeft()){
 			return true;
 		}else{
@@ -64,30 +61,30 @@ public class VillageComponentWaystone extends VillagePieces.Village{
 		if(name==null){
 			return true;
 		}
-		World world = iworld.getWorld();
 		int x = (this.boundingBox.minX + this.boundingBox.maxX)/2;
 		int z = (this.boundingBox.minZ + this.boundingBox.maxZ)/2;
 		BlockPos postPos = GenerateStructureHelper.getInstance().getTopSolidOrLiquidBlock(world, new BlockPos(x, 0, z));
+
+		List<BaseModelPost> allowedModelTypes = Signpost.proxy.blockHandler.baseModelsForVillages();
+		if(allowedModelTypes.size() == 0) return true;
+
 		if (world.getBlockState(postPos.add(0, -1, 0)).getMaterial().isLiquid()) {
-			IBlockState block = this.getBiomeSpecificBlockState(Blocks.OAK_PLANKS.getDefaultState());
+			IBlockState block = this.getBiomeSpecificBlockState(Blocks.PLANKS.getDefaultState());
 			world.setBlockState(postPos.add(0, -1, 0), block);
 		}
 		final BlockPos finalPos = postPos;
-		if(world.setBlockState(finalPos, BlockHandler.basemodels[random.nextInt(2)].getStateForFacing(facing))){
-			SPEventHandler.scheduleTask(new BoolRun() {
-				@Override
-				public boolean run() {
-					TileEntity tile = world.getTileEntity(finalPos);
-					if(tile instanceof WaystoneContainer){
-						if(PostHandler.getNativeWaystones().nameTaken(name)) {
-							setupWaystone(NameLibrary.getInstance().getName(random), world, finalPos, (WaystoneContainer) tile);
-						} else {
-							setupWaystone(name, world, finalPos, (WaystoneContainer) tile);
-						}
-						return true;
-					}else{
-						return false;
+		if(world.setBlockState(finalPos, allowedModelTypes.get(random.nextInt(allowedModelTypes.size())).getStateForFacing(facing), 3)){
+			SPEventHandler.scheduleTask(() -> {
+				TileEntity tile = world.getTileEntity(finalPos);
+				if(tile instanceof WaystoneContainer){
+					if(PostHandler.getNativeWaystones().nameTaken(name)) {
+						setupWaystone(NameLibrary.getInstance().getName(random), world, finalPos, (WaystoneContainer) tile);
+					} else {
+						setupWaystone(name, world, finalPos, (WaystoneContainer) tile);
 					}
+					return true;
+				}else{
+					return false;
 				}
 			});
 		}
@@ -98,7 +95,7 @@ public class VillageComponentWaystone extends VillagePieces.Village{
 		
 		assureBaseInfo(container, world, new MyBlockPos(world, postPos), facing, name);
 		
-		MutableBoundingBox villageBox = start.getBoundingBox();
+		StructureBoundingBox villageBox = start.getBoundingBox();
 		MyBlockPos villagePos = new MyBlockPos(world, villageBox.minX, 0, villageBox.minZ);
 		MyBlockPos blockPos = new MyBlockPos(world, postPos);
 		VillageLibrary.getInstance().putWaystone(villagePos, blockPos);

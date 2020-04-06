@@ -7,10 +7,10 @@ import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.util.BigBaseInfo;
 import gollorum.signpost.util.Sign;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
+import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.util.ResourceLocation;
 
-public class BigPostRenderer extends TileEntityRenderer<BigPostPostTile>{
+public class BigPostRenderer extends TileEntitySpecialRenderer<BigPostPostTile>{
 
 	private static final ModelBigSign model16 = new ModelBigSign(true);
 	private static final ModelBigSign model32 = new ModelBigSign(false);
@@ -20,12 +20,12 @@ public class BigPostRenderer extends TileEntityRenderer<BigPostPostTile>{
 	
 	void setTexture(ResourceLocation loc){
 		try{
-			bindTexture(loc);
+		bindTexture(loc);
 		}catch(Exception e){}
 	}
 	
 	@Override
-    public void render(BigPostPostTile tile, double x, double y, double z, float partialTicks, int destroyStage){
+    public void render(BigPostPostTile tile, double x, double y, double z, float partialTicks, int destroyStage, float alfa){
 		BigBaseInfo tilebases = tile.bases;
 		double rotation = 0;
 		if(tilebases==null && !tile.isItem){

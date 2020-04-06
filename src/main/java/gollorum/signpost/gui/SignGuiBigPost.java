@@ -1,8 +1,5 @@
 package gollorum.signpost.gui;
 
-import java.awt.Color;
-import java.io.IOException;
-
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.management.ClientConfigStorage;
 import gollorum.signpost.management.ConfigHandler;
@@ -16,6 +13,9 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.resources.I18n;
 import net.minecraftforge.fml.client.FMLClientHandler;
+
+import java.awt.*;
+import java.io.IOException;
 
 public class SignGuiBigPost extends GuiScreen implements SignInput {
 
@@ -216,7 +216,7 @@ public class SignGuiBigPost extends GuiScreen implements SignInput {
 				String out = I18n.format("signpost.guiPrev");
 				int distance = (int) tile.toPos().distance(inf.teleportPosition)+1;
 				out = out.replaceAll("<distance>", ""+distance);
-				out = out.replaceAll("<amount>", Integer.toString((int) (tile.toPos().distance(inf.teleportPosition)/ClientConfigStorage.INSTANCE.getCostMult()+1)));
+				out = out.replaceAll("<amount>", Integer.toString(PostHandler.getStackSize(tile.toPos(), inf.teleportPosition)));
 				out = out.replaceAll("<itemName>", ConfigHandler.costName());
 				col = Color.white.getRGB();
 				std = out;

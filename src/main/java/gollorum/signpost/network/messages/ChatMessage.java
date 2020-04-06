@@ -1,10 +1,10 @@
 package gollorum.signpost.network.messages;
 
-import gollorum.signpost.network.NetworkUtil;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.network.PacketBuffer;
+import io.netty.buffer.ByteBuf;
+import net.minecraftforge.fml.common.network.ByteBufUtils;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 
-public class ChatMessage extends Message<ChatMessage> implements com.mojang.brigadier.Message {
+public class ChatMessage implements IMessage {
 
 	public String message;
 	public String[] keyword, replacement;
@@ -30,23 +30,23 @@ public class ChatMessage extends Message<ChatMessage> implements com.mojang.brig
 	}
 	
 	@Override
-	public void encode(PacketBuffer buffer) {
-		buffer.writeString(message);
-		buffer.writeInt(keyword.length);
+	public void toBytes(ByteBuf buf) {
+		ByteBufUtils.writeUTF8String(buf, message);
+		buf.writeInt(keyword.length);
 		for(int i=0; i<keyword.length; i++){
-			buffer.writeString(getKeyword(i));
-			buffer.writeString(getReplacement(i));
+			ByteBufUtils.writeUTF8String(buf, getKeyword(i));
+			ByteBufUtils.writeUTF8String(buf, getReplacement(i));
 		}
 	}
 
 	@Override
-	public void decode(PacketBuffer buffer) {
-		message = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
-		keyword = new String[buffer.readInt()];
+	public void fromBytes(ByteBuf buf) {
+		message = ByteBufUtils.readUTF8String(buf);
+		keyword = new String[buf.readInt()];
 		replacement = new String[keyword.length];
 		for(int i=0; i<keyword.length; i++){
-			keyword[i] = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
-			replacement[i] = buffer.readString(NetworkUtil.MAX_STRING_LENGTH);
+			keyword[i] = ByteBufUtils.readUTF8String(buf);
+			replacement[i] = ByteBufUtils.readUTF8String(buf);
 		}
 	}
 	
@@ -59,22 +59,4 @@ public class ChatMessage extends Message<ChatMessage> implements com.mojang.brig
 		String ret = replacement[i];
 		return ""+ret;
 	}
-
-	@Override
-	public String getString() {
-		String out = I18n.format(message);
-		for(int i=0; i<keyword.length; i++){
-			out = out.replaceAll(keyword[i], getReplacement(replacement[i]));
-		}
-		return out;
-	}
-
-	public String getReplacement(String replace){
-		String ret = I18n.format(replace);
-		if(!ret.equals("")){
-			return ret;
-		}
-		return replace;
-	}
-
 }

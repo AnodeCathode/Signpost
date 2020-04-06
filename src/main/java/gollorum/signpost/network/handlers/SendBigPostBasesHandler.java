@@ -1,7 +1,5 @@
 package gollorum.signpost.network.handlers;
 
-import java.util.function.Supplier;
-
 import gollorum.signpost.blocks.tiles.BigPostPostTile;
 import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.network.NetworkHandler;
@@ -10,13 +8,15 @@ import gollorum.signpost.util.BigBaseInfo;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.fml.network.NetworkEvent.Context;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
+import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
+import net.minecraftforge.fml.relauncher.Side;
 
-public class SendBigPostBasesHandler extends Handler<SendBigPostBasesHandler, SendBigPostBasesMessage>{
+public class SendBigPostBasesHandler implements IMessageHandler<SendBigPostBasesMessage, IMessage>{
 
 	@Override
-	public void handle(SendBigPostBasesMessage message, Supplier<Context> contextSupplier) {
+	public IMessage onMessage(SendBigPostBasesMessage message, MessageContext ctx) {
 		TileEntity tile = message.pos.getTile();
 		BigBaseInfo bases;
 		if(tile instanceof BigPostPostTile){
@@ -53,11 +53,11 @@ public class SendBigPostBasesHandler extends Handler<SendBigPostBasesHandler, Se
 			bases.awaitingPaint = false;
 			break;
 		}
-		Context ctx = contextSupplier.get();
-		if(ctx.getDirection().getReceptionSide().equals(LogicalSide.SERVER)){
-			ctx.getSender().world.getTileEntity(message.pos.toBlockPos()).markDirty();
-			NetworkHandler.sendToAll(message);
+		if(ctx.side.equals(Side.SERVER)){
+			ctx.getServerHandler().player.world.getTileEntity(message.pos.toBlockPos()).markDirty();
+			NetworkHandler.netWrap.sendToAll(message);
 		}
+		return null;
 	}
 
 }

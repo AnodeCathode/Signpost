@@ -19,12 +19,10 @@ import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Paintable;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
-import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
 
 public class BigPostPostTile extends SuperPostPostTile {
@@ -33,22 +31,19 @@ public class BigPostPostTile extends SuperPostPostTile {
 	public static final int DESCRIPTIONLENGTH = 4;
 	private boolean isLoading = false;
 
-    private static final TileEntityType<BigPostPostTile> TYPE = TileEntityType.register("bigpostposttile", TileEntityType.Builder.create(BigPostPostTile::new));
-    
 	@Deprecated
 	public BigBaseInfo bases = null;
 
 	public BigPostPostTile(){
-		super(TYPE);
+		super();
 		SPEventHandler.scheduleTask(new BoolRun(){
 			@Override
 			public boolean run() {
-				Block block = getBlockState().getBlock();
-				if(block==null){
+				if(getBlockType()==null){
 					return false;
 				}else{
-					if(block instanceof BigPostPost){
-						type = ((BigPostPost)block).type;
+					if(getBlockType() instanceof BigPostPost){
+						type = ((BigPostPost)getBlockType()).type;
 					}
 					return true;
 				}
@@ -57,7 +52,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 	}
 
 	public BigPostPostTile(BigPostType type){
-		super(TYPE);
+		super();
 		this.type = type;
 	}
 	
@@ -92,7 +87,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 			getWorld().spawnEntity(item);
 		}
 		if(PostHandler.getBigPosts().remove(pos)!=null){
-			NetworkHandler.sendToAll(new SendAllBigPostBasesMessage());
+			NetworkHandler.netWrap.sendToAll(new SendAllBigPostBasesMessage());
 		}
 	}
 
@@ -101,7 +96,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 		isLoading = true;
 		BigBaseInfo bases = getBases();
 		tagCompound.setString("base", ""+bases.sign.base);
-		tagCompound.setInt("rot", bases.sign.rotation);
+		tagCompound.setInteger("rot", bases.sign.rotation);
 		tagCompound.setBoolean("flip", bases.sign.flip);
 		tagCompound.setString("overlay", ""+bases.sign.overlay);
 		tagCompound.setBoolean("point", bases.sign.point);
@@ -122,7 +117,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 	@Override
 	public void load(NBTTagCompound tagCompound) {
 		final String base = tagCompound.getString("base");
-		final int rotation = tagCompound.getInt("rot");
+		final int rotation = tagCompound.getInteger("rot");
 		final boolean flip = tagCompound.getBoolean("flip");
 		final OverlayType overlay = OverlayType.get(tagCompound.getString("overlay"));
 		final boolean point = tagCompound.getBoolean("point");
@@ -170,7 +165,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 							break;
 					}
 					isLoading = false;
-					NetworkHandler.sendToAll(new SendBigPostBasesMessage(self, bases));
+					NetworkHandler.netWrap.sendToAll(new SendBigPostBasesMessage(self, bases));
 					return true;
 				}
 			}
@@ -184,8 +179,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 	@Override
 	public Sign getSign(EntityPlayer player) {
 		BigBaseInfo bases = getBases();
-		Block block = getBlockState().getBlock();
-		BigHit hit = (BigHit) ((BigPostPost)block).getHitTarget(getWorld(), getPos().getX(), pos.getY(), pos.getZ(), player);
+		BigHit hit = (BigHit) ((BigPostPost)getBlockType()).getHitTarget(getWorld(), getPos().getX(), pos.getY(), pos.getZ(), player);
 		if(hit.target.equals(BigHitTarget.BASE)){
 			return bases.sign;
 		}else{
@@ -196,8 +190,7 @@ public class BigPostPostTile extends SuperPostPostTile {
 	@Override
 	public Paintable getPaintable(EntityPlayer player) {
 		BigBaseInfo bases = getBases();
-		Block block = getBlockState().getBlock();
-		BigHit hit = (BigHit) ((BigPostPost)block).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
+		BigHit hit = (BigHit) ((BigPostPost)getBlockType()).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
 		if(hit.target.equals(BigHitTarget.BASE)){
 			return bases.sign;
 		}else{

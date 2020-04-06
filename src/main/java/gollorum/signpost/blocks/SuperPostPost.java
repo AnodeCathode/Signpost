@@ -1,7 +1,5 @@
 package gollorum.signpost.blocks;
 
-import java.util.UUID;
-
 import gollorum.signpost.BlockHandler;
 import gollorum.signpost.SPEventHandler;
 import gollorum.signpost.Signpost;
@@ -24,6 +22,7 @@ import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Paintable;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
+import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -34,20 +33,22 @@ import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.util.UUID;
+
 public abstract class SuperPostPost extends BlockContainer {
 
-	protected SuperPostPost(Properties properties) {super(properties);}
+	protected SuperPostPost(Material materialIn) {super(materialIn);}
 
 	@Override
-	public void onBlockClicked(IBlockState state, World world, BlockPos pos, EntityPlayer player) {
+	public void onBlockClicked(World world, BlockPos pos, EntityPlayer playerIn) {
 		SuperPostPostTile superTile = getSuperTile(world, pos);
-		if (world.isRemote || !ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)) {
+		if (world.isRemote || !canUse((EntityPlayerMP) playerIn, superTile)) {
 			return;
 		}
+		EntityPlayerMP player = (EntityPlayerMP) playerIn;
 		Object hit = getHitTarget(world, pos.getX(), pos.getY(), pos.getZ(), player);
 		if(isHitWaystone(hit)&&player.isSneaking()){
 			superTile.destroyWaystone();
@@ -94,45 +95,46 @@ public abstract class SuperPostPost extends BlockContainer {
 	}
 	
 	@Override
-	public boolean onBlockActivated(IBlockState state, World world, BlockPos pos, EntityPlayer player, EnumHand hand, EnumFacing side, float hitX, float hitY, float hitZ){
-		if(MinecraftForge.EVENT_BUS.post(new UseSignpostEvent(player, world, pos.getX(), pos.getY(), pos.getZ())) || world.isRemote){
+	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ){
+		if(MinecraftForge.EVENT_BUS.post(new UseSignpostEvent(playerIn, worldIn, pos.getX(), pos.getY(), pos.getZ())) || worldIn.isRemote){
 			return true;
 		}
 		
-		Object hit = getHitTarget(world, pos.getX(), pos.getY(), pos.getZ(), player);
-		SuperPostPostTile superTile = getSuperTile(world, pos);
+		Object hit = getHitTarget(worldIn, pos.getX(), pos.getY(), pos.getZ(), playerIn);
+		SuperPostPostTile superTile = getSuperTile(worldIn, pos);
+		EntityPlayerMP player = (EntityPlayerMP) playerIn;
 		if(isHitWaystone(hit)){
 			rightClickWaystone(superTile, player, pos.getX(), pos.getY(), pos.getZ());
 		}
-		else if (!PostHandler.isHandEmpty(player)){
-			if(player.getHeldItemMainhand().getItem() instanceof PostWrench){
-				if(!ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)){
+		else if (!PostHandler.isHandEmpty(playerIn)){
+			if(playerIn.getHeldItemMainhand().getItem() instanceof PostWrench){
+				if(!canUse(player, superTile)){
 					return true;
 				}
 				rightClickWrench(hit, superTile, player, pos.getX(), pos.getY(), pos.getZ());
 				sendPostBasesToAll(superTile);
-			}else if(player.getHeldItemMainhand().getItem() instanceof CalibratedPostWrench){
-				if(!ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)){
+			}else if(playerIn.getHeldItemMainhand().getItem() instanceof CalibratedPostWrench){
+				if(!canUse(player, superTile)){
 					return true;
 				}
 				rightClickCalibratedWrench(hit, superTile, player, pos.getX(), pos.getY(), pos.getZ());
-			}else if(player.getHeldItemMainhand().getItem() instanceof PostBrush){
-				if(!ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)){
+			}else if(playerIn.getHeldItemMainhand().getItem() instanceof PostBrush){
+				if(!canUse(player, superTile)){
 					return true;
 				}
 				rightClickBrush(hit, superTile, player, pos.getX(), pos.getY(), pos.getZ());
 				sendPostBasesToAll(superTile);
 			}else if(superTile.isAwaitingPaint()){
+				if(!canUse(player, superTile)){
+					return true;
+				}
 				if(superTile.getPaintObject()==null){
 					superTile.setAwaitingPaint(false);
 				}else{
-					if(!ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner)){
-						return true;
-					}
-					NetworkHandler.sendTo((EntityPlayerMP)player, new RequestTextureMessage(pos.getX(), pos.getY(), pos.getZ(), hand, hitX, hitY, hitZ));
+					NetworkHandler.netWrap.sendTo(new RequestTextureMessage(pos.getX(), pos.getY(), pos.getZ(), hand, facing, hitX, hitY, hitZ), (EntityPlayerMP)playerIn);
 				}
-			}else if(Block.getBlockFromItem(player.getHeldItemMainhand().getItem()) instanceof BasePost){
-				if(rightClickBase(superTile, (EntityPlayerMP) player, pos)){
+			}else if(Block.getBlockFromItem(playerIn.getHeldItemMainhand().getItem()) instanceof BasePost){
+				if(rightClickBase(superTile, (EntityPlayerMP) playerIn, pos)){
 					preRightClick(hit, superTile, player, pos.getX(), pos.getY(), pos.getZ());
 				}
 			}else{
@@ -143,20 +145,24 @@ public abstract class SuperPostPost extends BlockContainer {
 		}
 		return true;
 	}
+	
+	protected boolean canUse(EntityPlayerMP player, SuperPostPostTile tile) {
+		return ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse(player, ""+tile.owner);
+	}
 
-	private void rightClickWaystone(SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z) {
+	private void rightClickWaystone(SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z) {
 		BaseInfo ws = superTile.getBaseInfo();
 		if(!player.isSneaking()){
-			if(!PostHandler.doesPlayerKnowNativeWaystone((EntityPlayerMP) player, ws)){
+			if(!PostHandler.doesPlayerKnowNativeWaystone(player, ws)){
 				if (!ClientConfigStorage.INSTANCE.deactivateTeleportation()) {
-					NetworkHandler.sendTo((EntityPlayerMP) player, new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()));
+					NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()), player);
 				}
 				PostHandler.addDiscovered(player.getUniqueID(), ws);
 			}
 		}else{
 			if (!ClientConfigStorage.INSTANCE.deactivateTeleportation()
-					&& ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canUse((EntityPlayerMP) player, ""+ws.owner)) {
-				NetworkHandler.sendTo((EntityPlayerMP) player, new OpenGuiMessage(Signpost.GuiBaseID, x, y, z));
+					&& ClientConfigStorage.INSTANCE.getSecurityLevelWaystone().canUse(player, ""+ws.owner)) {
+				NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, x, y, z), player);
 			}
 		}
 	}
@@ -168,7 +174,7 @@ public abstract class SuperPostPost extends BlockContainer {
 		if(superTile.isWaystone()){
 			return true;
 		}
-		if(!(ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse((EntityPlayerMP) player, ""+superTile.owner) && SPEventHandler.INSTANCE.checkWaystoneCount(player))){
+		if(!(ClientConfigStorage.INSTANCE.getSecurityLevelSignpost().canUse(player, ""+superTile.owner) && SPEventHandler.INSTANCE.checkWaystoneCount(player))){
 			return true;
 		}
 		MyBlockPos blockPos = superTile.toPos();
@@ -178,22 +184,22 @@ public abstract class SuperPostPost extends BlockContainer {
 		BaseInfo ws = new BaseInfo(name, blockPos, telePos, owner);
 		PostHandler.addWaystone(ws);
 		PostHandler.addDiscovered(owner, ws);
-		NetworkHandler.sendToAll(new BaseUpdateClientMessage());
+		NetworkHandler.netWrap.sendToAll(new BaseUpdateClientMessage());
 		MinecraftForge.EVENT_BUS.post(new UpdateWaystoneEvent(UpdateWaystoneEvent.WaystoneEventType.PLACED,superTile.getWorld(), telePos.x, telePos.y, telePos.z, name));
-		NetworkHandler.sendTo(player, new OpenGuiMessage(Signpost.GuiBaseID, pos.getX(), pos.getY(), pos.getZ()));
+		NetworkHandler.netWrap.sendTo(new OpenGuiMessage(Signpost.GuiBaseID, pos.getX(), pos.getY(), pos.getZ()), player);
 		superTile.isWaystone = true;
 		if(!ConfigHandler.isCreative(player)){
-			player.inventory.clearMatchingItems(itemStack -> itemStack.getItem().equals(BlockHandler.base.asItem()), 1);
+			player.inventory.clearMatchingItems(Item.getItemFromBlock(BlockHandler.base), -1, 1, null);
 		}
 		return false;
 	}
 	
-	private void preRightClick(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z){
+	private void preRightClick(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z){
 		if(isHitWaystone(hitObj)){
 			BaseInfo ws = superTile.getBaseInfo();
-			if(!PostHandler.doesPlayerKnowNativeWaystone((EntityPlayerMP) player, ws)){
+			if(!PostHandler.doesPlayerKnowNativeWaystone(player, ws)){
 				if (!ClientConfigStorage.INSTANCE.deactivateTeleportation()) {
-					NetworkHandler.sendTo((EntityPlayerMP) player, new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()));
+					NetworkHandler.netWrap.sendTo(new ChatMessage("signpost.discovered", "<Waystone>", ws.getName()), player);
 				}
 				PostHandler.addDiscovered(player.getUniqueID(), ws);
 			}
@@ -202,7 +208,7 @@ public abstract class SuperPostPost extends BlockContainer {
 		}
 	}
 
-	private boolean preShiftClick(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z) {
+	private boolean preShiftClick(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z) {
 		if(isHitWaystone(hitObj)){
 			superTile.destroyWaystone();
 			return false;
@@ -213,28 +219,28 @@ public abstract class SuperPostPost extends BlockContainer {
 
 	protected abstract boolean isHitWaystone(Object hitObj);
 
-	public abstract void clickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void rightClickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void shiftClickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
+	public abstract void clickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void rightClickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void shiftClickWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
 
-	public abstract void clickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void rightClickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void shiftClickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
+	public abstract void clickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void rightClickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void shiftClickCalibratedWrench(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
 
-	public abstract void clickBrush(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void rightClickBrush(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
+	public abstract void clickBrush(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void rightClickBrush(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
 	
-	public abstract void click(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void rightClick(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void shiftClick(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
+	public abstract void click(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void rightClick(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void shiftClick(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
 	
-	public abstract void clickBare(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
-	public abstract void shiftClickBare(Object hitObj, SuperPostPostTile superTile, EntityPlayer player, int x, int y, int z);
+	public abstract void clickBare(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
+	public abstract void shiftClickBare(Object hitObj, SuperPostPostTile superTile, EntityPlayerMP player, int x, int y, int z);
 
 	public abstract void sendPostBasesToAll(SuperPostPostTile superTile);
 	public abstract void sendPostBasesToServer(SuperPostPostTile superTile);
 	
-	public static SuperPostPostTile getSuperTile(IWorld world, BlockPos pos){
+	public static SuperPostPostTile getSuperTile(World world, BlockPos pos){
 		return (SuperPostPostTile) world.getTileEntity(pos);
 	}
     
@@ -276,6 +282,11 @@ public abstract class SuperPostPost extends BlockContainer {
 	}
 
 	@Override
+    public boolean isOpaqueCube(IBlockState state){
+        return false;
+    }
+	
+	@Override
 	public boolean isFullCube(IBlockState state){
 		return false;
 	}
@@ -285,11 +296,11 @@ public abstract class SuperPostPost extends BlockContainer {
 		return BlockRenderLayer.TRANSLUCENT;
 	}
 
-	public static void placeClient(IWorld world, MyBlockPos blockPos, EntityPlayer player) {
+	public static void placeClient(World world, MyBlockPos blockPos, EntityPlayer player) {
 		getSuperTile(world, blockPos.toBlockPos()).owner = player.getUniqueID();
 	}
 
-	public static void placeServer(IWorld world, MyBlockPos blockPos, EntityPlayerMP player) {
+	public static void placeServer(World world, MyBlockPos blockPos, EntityPlayerMP player) {
 		getSuperTile(world, blockPos.toBlockPos()).owner = player.getUniqueID();
 	}
 

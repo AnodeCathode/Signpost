@@ -19,12 +19,10 @@ import gollorum.signpost.util.MyBlockPos;
 import gollorum.signpost.util.Paintable;
 import gollorum.signpost.util.Sign;
 import gollorum.signpost.util.Sign.OverlayType;
-import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
 
 public class PostPostTile extends SuperPostPostTile {
@@ -32,22 +30,19 @@ public class PostPostTile extends SuperPostPostTile {
 	public PostType type = null;
 	private boolean isLoading = false; 
 
-    private static final TileEntityType<PostPostTile> TYPE = TileEntityType.register("postposttile", TileEntityType.Builder.create(PostPostTile::new));
-    
 	@Deprecated
 	public DoubleBaseInfo bases = null;
 	
 	public PostPostTile(){
-		super(TYPE);
+		super();
 		SPEventHandler.scheduleTask(new BoolRun(){
 			@Override
 			public boolean run() {
-				Block block = getBlockState().getBlock();
-				if(block==null){
+				if(getBlockType()==null){
 					return false;
 				}else{
-					if(block instanceof PostPost){
-						type = ((PostPost)block).type;
+					if(getBlockType() instanceof PostPost){
+						type = ((PostPost)getBlockType()).type;
 					}
 					return true;
 				}
@@ -56,7 +51,7 @@ public class PostPostTile extends SuperPostPostTile {
 	}
 
 	public PostPostTile(PostType type){
-		super(TYPE);
+		super();
 		this.type = type;
 	}
 
@@ -70,13 +65,13 @@ public class PostPostTile extends SuperPostPostTile {
 			}
 			PostHandler.getPosts().put(toPos(), bases);
 		}else{ 
-	        if(bases.sign1!=null && bases.sign1.base!=null && bases.sign1.base.teleportPosition==null){ 
+	        if(bases.sign1!=null && bases.sign1.base!=null && bases.sign1.base.teleportPosition ==null){
 	          BaseInfo newBase = PostHandler.getWSbyName(bases.sign1.base.getName()); 
 	          if(newBase!=null){ 
 	            bases.sign1.base = newBase; 
 	          } 
 	        } 
-	        if(bases.sign2!=null && bases.sign2.base!=null && bases.sign2.base.teleportPosition==null){ 
+	        if(bases.sign2!=null && bases.sign2.base!=null && bases.sign2.base.teleportPosition ==null){
 	          BaseInfo newBase = PostHandler.getWSbyName(bases.sign2.base.getName()); 
 	          if(newBase!=null){ 
 	            bases.sign2.base = newBase; 
@@ -100,7 +95,7 @@ public class PostPostTile extends SuperPostPostTile {
 			getWorld().spawnEntity(item);
 		}
 		if(PostHandler.getPosts().remove(pos)!=null){
-			NetworkHandler.sendToAll(new SendAllPostBasesMessage());
+			NetworkHandler.netWrap.sendToAll(new SendAllPostBasesMessage());
 		}
 	}
 
@@ -109,8 +104,8 @@ public class PostPostTile extends SuperPostPostTile {
 		DoubleBaseInfo bases = getBases();
 		tagCompound.setString("base1", ""+bases.sign1.base);
 		tagCompound.setString("base2", ""+bases.sign2.base);
-		tagCompound.setInt("rot1", bases.sign1.rotation);
-		tagCompound.setInt("rot2", bases.sign2.rotation);
+		tagCompound.setInteger("rot1", bases.sign1.rotation);
+		tagCompound.setInteger("rot2", bases.sign2.rotation);
 		tagCompound.setBoolean("flip1", bases.sign1.flip);
 		tagCompound.setBoolean("flip2", bases.sign2.flip);
 		tagCompound.setString("overlay1", ""+bases.sign1.overlay);
@@ -138,8 +133,8 @@ public class PostPostTile extends SuperPostPostTile {
 		final String base1 = tagCompound.getString("base1");
 		final String base2 = tagCompound.getString("base2");
 
-		final int rotation1 = tagCompound.getInt("rot1");
-		final int rotation2 = tagCompound.getInt("rot2");
+		final int rotation1 = tagCompound.getInteger("rot1");
+		final int rotation2 = tagCompound.getInteger("rot2");
 
 		final boolean flip1 = tagCompound.getBoolean("flip1");
 		final boolean flip2 = tagCompound.getBoolean("flip2");
@@ -200,7 +195,7 @@ public class PostPostTile extends SuperPostPostTile {
 						bases.awaitingPaint = false;
 						break;
 					}
-					NetworkHandler.sendToAll(new SendPostBasesMessage(self, bases));
+					NetworkHandler.netWrap.sendToAll(new SendPostBasesMessage(self, bases));
 					isLoading = false;
 					return true;
 				}
@@ -215,8 +210,7 @@ public class PostPostTile extends SuperPostPostTile {
 	@Override
 	public Sign getSign(EntityPlayer player) {
 		DoubleBaseInfo bases = getBases();
-		Block block = getBlockState().getBlock();
-		Hit hit = (Hit) ((PostPost)block).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
+		Hit hit = (Hit) ((PostPost)getBlockType()).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
 		if(hit.target.equals(HitTarget.BASE1)){
 			return bases.sign1;
 		}else if(hit.target.equals(HitTarget.BASE2)){
@@ -229,8 +223,7 @@ public class PostPostTile extends SuperPostPostTile {
 	@Override
 	public Paintable getPaintable(EntityPlayer player) {
 		DoubleBaseInfo bases = getBases();
-		Block block = getBlockState().getBlock();
-		Hit hit = (Hit) ((PostPost)block).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
+		Hit hit = (Hit) ((PostPost)getBlockType()).getHitTarget(getWorld(), pos.getX(), pos.getY(), pos.getZ(), player);
 		if(hit.target.equals(HitTarget.BASE1)){
 			return bases.sign1;
 		}else if(hit.target.equals(HitTarget.BASE2)){

@@ -1,8 +1,5 @@
 package gollorum.signpost.blocks.tiles;
 
-import java.util.List;
-import java.util.UUID;
-
 import gollorum.signpost.BlockHandler;
 import gollorum.signpost.SPEventHandler;
 import gollorum.signpost.blocks.SuperPostPost;
@@ -12,54 +9,48 @@ import gollorum.signpost.management.PostHandler;
 import gollorum.signpost.network.NetworkHandler;
 import gollorum.signpost.network.messages.BaseUpdateClientMessage;
 import gollorum.signpost.network.messages.BaseUpdateServerMessage;
-import gollorum.signpost.util.BaseInfo;
-import gollorum.signpost.util.BoolRun;
-import gollorum.signpost.util.MyBlockPos;
-import gollorum.signpost.util.Paintable;
-import gollorum.signpost.util.Sign;
+import gollorum.signpost.util.*;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.dimension.DimensionType;
 import net.minecraftforge.common.MinecraftForge;
+
+import java.util.List;
+import java.util.UUID;
 
 public abstract class SuperPostPostTile extends TileEntity implements WaystoneContainer{
 
 	public boolean isItem = false;
 	public boolean isCanceled = false;
 	public UUID owner;
-
+	
 	@Deprecated
 	public boolean isWaystone = false;
 	
-	public SuperPostPostTile(TileEntityType<? extends SuperPostPostTile> type){
-		super(type);
-		SPEventHandler.scheduleTask(new BoolRun(){
-			@Override
-			public boolean run() {
-				if(getWorld()==null){
-					return false;
-				}else{
-					isWaystone();
-					return true;
-				}
+	public SuperPostPostTile(){
+		super();
+		SPEventHandler.scheduleTask(() -> {
+			if(getWorld()==null){
+				return false;
+			}else{
+				isWaystone();
+				return true;
 			}
 		});
 	}
 	
 	public final MyBlockPos toPos(){
-		return new MyBlockPos(pos, dim());
+		return new MyBlockPos(pos.getX(), pos.getY(), pos.getZ(), dim());
 	}
 
-	public final DimensionType dim(){
-		if(getWorld()==null){
-			return null;
+	public final int dim(){
+		if(getWorld()==null||getWorld().provider==null){
+			return Integer.MIN_VALUE;
 		}else
-			return getWorld().getDimension().getType();
+			return getWorld().provider.getDimension();
 	}
 
 	public static final ResourceLocation stringToLoc(String str){
@@ -85,14 +76,14 @@ public abstract class SuperPostPostTile extends TileEntity implements WaystoneCo
 		SPEventHandler.INSTANCE.updateWaystoneCount(this);
 		if(PostHandler.getNativeWaystones().removeByPos(pos)){
 			MinecraftForge.EVENT_BUS.post(new UpdateWaystoneEvent(UpdateWaystoneEvent.WaystoneEventType.DESTROYED, getWorld(), base.teleportPosition.x, base.teleportPosition.y, base.teleportPosition.z, base==null?"":base.getName()));
-			NetworkHandler.sendToAll(new BaseUpdateClientMessage());
+			NetworkHandler.netWrap.sendToAll(new BaseUpdateClientMessage());
 		}
 	}
 	
 	@Override
-	public NBTTagCompound serializeNBT() {
-		NBTTagCompound tagCompound = super.serializeNBT();
-		tagCompound.setInt("signpostNBTVersion", 1);
+	public NBTTagCompound writeToNBT(NBTTagCompound tagCompound) {
+		super.writeToNBT(tagCompound);
+		tagCompound.setInteger("signpostNBTVersion", 1);
 		NBTTagCompound tagComp = new NBTTagCompound();
 		if(!(owner == null)){
 			tagComp.setString("PostOwner", owner.toString());
@@ -103,9 +94,9 @@ public abstract class SuperPostPostTile extends TileEntity implements WaystoneCo
 	}
 
 	@Override
-	public void deserializeNBT(NBTTagCompound tagCompound) {
-		super.deserializeNBT(tagCompound);
-		if(tagCompound.getInt("signpostNBTVersion")==1){
+	public void readFromNBT(NBTTagCompound tagCompound) {
+		super.readFromNBT(tagCompound);
+		if(tagCompound.getInteger("signpostNBTVersion")==1){
 			NBTTagCompound tagComp = (NBTTagCompound) tagCompound.getTag("signpostDataTag");
 			String owner = tagComp.getString("PostOwner");
 			try{
@@ -137,7 +128,7 @@ public abstract class SuperPostPostTile extends TileEntity implements WaystoneCo
 	public abstract List<Sign> getEmptySigns();  
 
 	public SuperPostPost getSuperBlock() {
-		return (SuperPostPost) this.getBlockState().getBlock();
+		return (SuperPostPost) this.getBlockType();
 	}
 	 
 	public boolean isWaystone(){
@@ -152,7 +143,7 @@ public abstract class SuperPostPostTile extends TileEntity implements WaystoneCo
 	public void setName(String name) {
 		BaseInfo ws = getBaseInfo();
 		ws.setName(name);
-		NetworkHandler.sendToServer(new BaseUpdateServerMessage(ws, false));
+		NetworkHandler.netWrap.sendToServer(new BaseUpdateServerMessage(ws, false));
 	}
 
 	@Override
